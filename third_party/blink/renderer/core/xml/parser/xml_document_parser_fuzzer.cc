@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "base/containers/span.h"
+#include "base/no_destructor.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_supported_type.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -35,9 +36,23 @@
 
 namespace blink {
 
+// Page setup dominates per-input cost (~300ms), so the page is created once
+// and reused; every input parses into a fresh Document or DocumentFragment.
+class Environment {
+ public:
+  Environment() : page_holder_(std::make_unique<DummyPageHolder>()) {}
+
+  LocalFrame& GetFrame() { return page_holder_->GetFrame(); }
+  Document& GetDocument() { return page_holder_->GetDocument(); }
+
+ private:
+  test::TaskEnvironment task_environment_;
+  std::unique_ptr<DummyPageHolder> page_holder_;
+};
+
 int FuzzXMLParser(const uint8_t* data, size_t size) {
   static BlinkFuzzerTestSupport test_support = BlinkFuzzerTestSupport();
-  test::TaskEnvironment task_environment;
+  static base::NoDestructor<Environment> environment;
 
   // SAFETY: libFuzzer guarantees `data` points to `size` valid bytes.
   const base::span<const uint8_t> input =
@@ -47,9 +62,8 @@ int FuzzXMLParser(const uint8_t* data, size_t size) {
 
   // A real window and script context are needed: the parser reports
   // well-formedness and namespace errors as DOMExceptions.
-  auto page_holder = std::make_unique<DummyPageHolder>();
   ScriptState* script_state =
-      ToScriptStateForMainWorld(&page_holder->GetFrame());
+      ToScriptStateForMainWorld(&environment->GetFrame());
   ScriptState::Scope scope(script_state);
 
   if (control & 0x01) {
@@ -74,7 +88,7 @@ int FuzzXMLParser(const uint8_t* data, size_t size) {
   } else {
     // Fragment path (innerHTML on XML documents): the context element's
     // namespace drives prefix resolution, so alternate XHTML and SVG.
-    Document& document = page_holder->GetDocument();
+    Document& document = environment->GetDocument();
     DummyExceptionStateForTesting exception;
     Element* context = document.createElementNS(
         (control & 0x02) ? svg_names::kNamespaceURI
