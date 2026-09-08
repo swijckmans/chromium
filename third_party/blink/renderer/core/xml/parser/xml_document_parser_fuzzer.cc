@@ -14,14 +14,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <memory>
+
 #include "base/containers/span.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_supported_type.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
 #include "third_party/blink/renderer/core/dom/element.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/svg_names.h"
-#include "third_party/blink/renderer/core/testing/null_execution_context.h"
+#include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
+#include "third_party/blink/renderer/core/xml/dom_parser.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/testing/blink_fuzzer_test_support.h"
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -33,30 +40,50 @@ int FuzzXMLParser(const uint8_t* data, size_t size) {
   test::TaskEnvironment task_environment;
 
   // SAFETY: libFuzzer guarantees `data` points to `size` valid bytes.
-  const base::span<const uint8_t> input = UNSAFE_BUFFERS(base::span(data, size));
+  const base::span<const uint8_t> input =
+      UNSAFE_BUFFERS(base::span(data, size));
   const uint8_t control = input[0];
   String source = String::FromUtf8WithLatin1Fallback(input.subspan(1u));
 
-  ScopedNullExecutionContext execution_context;
-  execution_context.GetExecutionContext().SetUpSecurityContextForTesting();
-  auto& doc = *Document::CreateForTest(execution_context.GetExecutionContext());
+  // A real window and script context are needed: the parser reports
+  // well-formedness and namespace errors as DOMExceptions.
+  auto page_holder = std::make_unique<DummyPageHolder>();
+  ScriptState* script_state =
+      ToScriptStateForMainWorld(&page_holder->GetFrame());
+  ScriptState::Scope scope(script_state);
 
   if (control & 0x01) {
-    // Whole-document path: exercises parse-error synthesis and the document
-    // writer, as reached by DOMParser / responseXML.
-    doc.SetContent(source);
+    // Whole-document path, exactly as reached from script via DOMParser.
+    V8SupportedType::Enum type;
+    switch ((control >> 1) & 0x03) {
+      case 0:
+        type = V8SupportedType::Enum::kTextXml;
+        break;
+      case 1:
+        type = V8SupportedType::Enum::kApplicationXhtmlXml;
+        break;
+      case 2:
+        type = V8SupportedType::Enum::kImageSvgXml;
+        break;
+      default:
+        type = V8SupportedType::Enum::kApplicationXml;
+        break;
+    }
+    DOMParser::Create(script_state)
+        ->ParseFromStringWithoutTrustedTypes(source, V8SupportedType(type));
   } else {
-    // Fragment path: the context element's namespace drives prefix resolution,
-    // so alternate between the HTML and SVG namespaces.
+    // Fragment path (innerHTML on XML documents): the context element's
+    // namespace drives prefix resolution, so alternate XHTML and SVG.
+    Document& document = page_holder->GetDocument();
     DummyExceptionStateForTesting exception;
-    Element* context = doc.createElementNS(
+    Element* context = document.createElementNS(
         (control & 0x02) ? svg_names::kNamespaceURI
                          : html_names::xhtmlNamespaceURI,
         AtomicString((control & 0x02) ? "svg" : "div"), exception);
     if (!context || exception.HadException()) {
       return 0;
     }
-    DocumentFragment* fragment = DocumentFragment::Create(doc);
+    DocumentFragment* fragment = DocumentFragment::Create(document);
     DummyExceptionStateForTesting parse_exception;
     fragment->ParseXML(source, context, parse_exception);
   }
