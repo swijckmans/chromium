@@ -1994,6 +1994,17 @@ blink_fuzzer_test("blink_html_tokenizer_fuzzer") {
   deps = [ ":core" ]
 }
 
+# Fuzzer for the Sanitizer API (Element::setHTML). Besides memory safety, it
+# checks that nothing the safe sanitizer must always remove survives.
+blink_fuzzer_test("blink_sanitizer_api_fuzzer") {
+  sources = [ "sanitizer/sanitizer_api_fuzzer.cc" ]
+  seed_corpus = "//third_party/blink/web_tests/external/wpt/sanitizer-api"
+  deps = [
+    ":core",
+    ":testing",
+  ]
+}
+
 # Fuzzer for SVG path string parsing
 blink_fuzzer_test("svg_path_parser_fuzzer") {
   sources = [ "svg/svg_path_parser_fuzzer.cc" ]
