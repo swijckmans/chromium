@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<body>
+<script>
+if (window.testRunner)
+  testRunner.dumpAsText();
+
+const stylesheet = `
+  <xsl:stylesheet version="1.0"
+      xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:import/>
+    <xsl:include/>
+    <xsl:template match="/">
+      <result>ok</result>
+    </xsl:template>
+  </xsl:stylesheet>`;
+const source = "<source/>";
+const parser = new DOMParser();
+const stylesheetDocument = parser.parseFromString(stylesheet, "text/xml");
+const sourceDocument = parser.parseFromString(source, "text/xml");
+const processor = new XSLTProcessor();
+processor.importStylesheet(stylesheetDocument);
+processor.transformToDocument(sourceDocument);
+document.body.textContent =
+    "PASS: bare xsl:import and xsl:include did not crash";
+</script>
+</body>
+</html>
