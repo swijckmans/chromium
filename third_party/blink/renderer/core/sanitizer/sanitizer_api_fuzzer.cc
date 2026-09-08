@@ -75,20 +75,20 @@ bool AnimatesHref(const Element& element) {
 // configuration: the baseline element/attribute lists, event handlers, and
 // javascript: navigation URLs. Anything here surviving Element::setHTML is a
 // sanitizer bypass.
-void CheckElementIsSafe(const Element& element) {
+void CheckElementIsSafe(const Element& element, const char* phase) {
   const Sanitizer* baseline = SanitizerBuiltins::GetBaseline();
   const QualifiedName& tag = element.TagQName();
 
   CHECK(!baseline->RemoveElements()->Contains(tag))
-      << "baseline element survived: " << tag;
+      << "baseline element survived: " << tag << " (" << phase << ")";
 
   for (const QualifiedName& name : element.getAttributeQualifiedNames()) {
     CHECK(!baseline->RemoveAttrs()->Contains(name))
-        << "baseline attribute survived: " << name;
+        << "baseline attribute survived: " << name << " (" << phase << ")";
     CHECK(name.NamespaceURI() ||
           !TrustedTypePolicyFactory::IsEventHandlerAttributeName(
               name.LocalName()))
-        << "event handler survived: " << name;
+        << "event handler survived: " << name << " (" << phase << ")";
   }
 
   bool javascript_url = false;
@@ -108,33 +108,59 @@ void CheckElementIsSafe(const Element& element) {
   } else if (svg_names::kAnimateTag.Matches(tag) ||
              svg_names::kAnimateTransformTag.Matches(tag) ||
              svg_names::kSetTag.Matches(tag)) {
-    CHECK(!AnimatesHref(element)) << "SVG href animation survived";
+    CHECK(!AnimatesHref(element))
+        << "SVG href animation survived (" << phase << ")";
   }
-  CHECK(!javascript_url) << "javascript: navigation URL survived on " << tag;
+  CHECK(!javascript_url) << "javascript: navigation URL survived on " << tag
+                         << " (" << phase << ")";
 }
 
-void CheckSubtreeIsSafe(const Node& root);
+void CheckSubtreeIsSafe(const Node& root, const char* phase);
 
-void CheckNestedTreesAreSafe(Element& element) {
+void CheckNestedTreesAreSafe(Element& element, const char* phase) {
   if (ShadowRoot* shadow_root = element.GetShadowRoot()) {
-    CheckSubtreeIsSafe(*shadow_root);
+    CheckSubtreeIsSafe(*shadow_root, phase);
   }
   if (auto* template_element = DynamicTo<HTMLTemplateElement>(element)) {
     if (DocumentFragment* content = template_element->content()) {
-      CheckSubtreeIsSafe(*content);
+      CheckSubtreeIsSafe(*content, phase);
     }
   }
 }
 
-void CheckSubtreeIsSafe(const Node& root) {
+void CheckSubtreeIsSafe(const Node& root, const char* phase) {
   for (Node& node : NodeTraversal::DescendantsOf(root)) {
     auto* element = DynamicTo<Element>(node);
     if (!element) {
       continue;
     }
-    CheckElementIsSafe(*element);
-    CheckNestedTreesAreSafe(*element);
+    CheckElementIsSafe(*element, phase);
+    CheckNestedTreesAreSafe(*element, phase);
   }
+}
+
+// Sanitized markup is routinely serialized and re-parsed (framework
+// re-renders, innerHTML round trips, storage). If re-parsing the
+// serialization of a sanitized tree yields something the sanitizer must
+// remove, the sanitizer has been bypassed via mutation. The replay uses the
+// same context element, so ordinary parser context-sensitivity is not
+// mistaken for a bypass.
+void CheckRoundTripIsSafe(Document& document,
+                          const QualifiedName& context_tag,
+                          Element& sanitized) {
+  static constexpr char kPhase[] = "after re-parsing sanitized output";
+  const String serialized = sanitized.innerHTML();
+  Element* replay = document.CreateRawElement(context_tag);
+  document.body()->AppendChild(replay);
+  {
+    DummyExceptionStateForTesting exception;
+    replay->SetHTMLUnsafeWithoutTrustedTypes(serialized, exception);
+    if (!exception.HadException()) {
+      CheckSubtreeIsSafe(*replay, kPhase);
+      CheckNestedTreesAreSafe(*replay, kPhase);
+    }
+  }
+  replay->remove();
 }
 
 int FuzzSanitizer(const uint8_t* data, size_t size) {
@@ -157,6 +183,7 @@ int FuzzSanitizer(const uint8_t* data, size_t size) {
   // fallback is still reachable if the feature is disabled, so keep covering
   // it.
   ScopedStreamingSanitizerForTest streaming((control & 0x03) != 0x03);
+  const bool check_round_trip = (control >> 5) & 0x01;
 
   Document& document = environment->GetDocument();
   const QualifiedName* context_tag = nullptr;
@@ -193,8 +220,11 @@ int FuzzSanitizer(const uint8_t* data, size_t size) {
     DummyExceptionStateForTesting exception;
     context->setHTML(markup, SetHTMLOptions::Create(), exception);
     if (!exception.HadException()) {
-      CheckSubtreeIsSafe(*context);
-      CheckNestedTreesAreSafe(*context);
+      CheckSubtreeIsSafe(*context, "after setHTML");
+      CheckNestedTreesAreSafe(*context, "after setHTML");
+      if (check_round_trip) {
+        CheckRoundTripIsSafe(document, *context_tag, *context);
+      }
     }
   }
 
