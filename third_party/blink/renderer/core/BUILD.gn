@@ -1998,7 +1998,10 @@ blink_fuzzer_test("blink_html_tokenizer_fuzzer") {
 blink_fuzzer_test("blink_xslt_processor_fuzzer") {
   sources = [ "xml/xslt_processor_fuzzer.cc" ]
   seed_corpus = "//third_party/blink/web_tests/fast/xsl"
-  deps = [ ":core", ":testing" ]
+  deps = [
+    ":core",
+    ":testing",
+  ]
 }
 
 # Fuzzer for SVG path string parsing

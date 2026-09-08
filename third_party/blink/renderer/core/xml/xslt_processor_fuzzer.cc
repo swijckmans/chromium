@@ -52,7 +52,7 @@ class Environment {
 namespace {
 
 V8SupportedType::Enum SourceType(uint8_t control) {
-  switch ((control >> 1) & 0x03) {
+  switch (control & 0x03) {
     case 0:
       return V8SupportedType::Enum::kTextXml;
     case 1:
@@ -70,20 +70,24 @@ int FuzzXSLTProcessor(const uint8_t* data, size_t size) {
   static BlinkFuzzerTestSupport test_support = BlinkFuzzerTestSupport();
   static base::NoDestructor<Environment> environment;
 
+  // Header byte 0: source type [1:0], transform [3:2], element import [4],
+  // setParameter [5], HTML output [6], parameter namespace [7].
+  // Header byte 1: parameter name [1:0]. Bytes 2-3 hold stylesheet length.
   // SAFETY: libFuzzer guarantees `data` points to `size` valid bytes.
   const base::span<const uint8_t> input =
       UNSAFE_BUFFERS(base::span(data, size));
   const uint8_t control = input[0];
+  const uint8_t parameter_control = input[1];
   const uint16_t requested_stylesheet_length =
-      static_cast<uint16_t>(input[1]) | (static_cast<uint16_t>(input[2]) << 8);
-  const size_t markup_length = input.size() - 3;
+      static_cast<uint16_t>(input[2]) | (static_cast<uint16_t>(input[3]) << 8);
+  const size_t markup_length = input.size() - 4;
   const size_t stylesheet_length = requested_stylesheet_length < markup_length
                                        ? requested_stylesheet_length
                                        : markup_length;
   const String stylesheet = String::FromUtf8WithLatin1Fallback(
-      input.subspan(size_t{3}, stylesheet_length));
+      input.subspan(size_t{4}, stylesheet_length));
   const String source = String::FromUtf8WithLatin1Fallback(
-      input.subspan(size_t{3} + stylesheet_length));
+      input.subspan(size_t{4} + stylesheet_length));
 
   ScriptState* script_state =
       ToScriptStateForMainWorld(&environment->GetFrame());
@@ -104,7 +108,7 @@ int FuzzXSLTProcessor(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  if (control & 0x08) {
+  if (control & 0x10) {
     processor->importStylesheet(stylesheet_document);
   } else {
     Element* root = stylesheet_document->documentElement();
@@ -114,11 +118,11 @@ int FuzzXSLTProcessor(const uint8_t* data, size_t size) {
     processor->importStylesheet(root);
   }
 
-  if (control & 0x10) {
+  if (control & 0x20) {
     static constexpr std::array<const char*, 3> kParameterNames = {"p", "param",
                                                                    "a:b"};
     const char* local_name =
-        kParameterNames[std::min<size_t>((control >> 5) & 0x03, 2)];
+        kParameterNames[std::min<size_t>(parameter_control & 0x03, 2)];
     const String parameter_value = stylesheet.length() > 256
                                        ? stylesheet.DeprecatedSubstring(0, 256)
                                        : stylesheet;
@@ -126,7 +130,7 @@ int FuzzXSLTProcessor(const uint8_t* data, size_t size) {
                             local_name, parameter_value);
   }
 
-  switch ((control >> 3) & 0x03) {
+  switch ((control >> 2) & 0x03) {
     case 0:
       processor->transformToFragment(source_document,
                                      &environment->GetDocument());
@@ -157,7 +161,7 @@ int FuzzXSLTProcessor(const uint8_t* data, size_t size) {
 }  // namespace blink
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  if (size >= 4 && size <= 65536) {
+  if (size >= 5 && size <= 65536) {
     blink::FuzzXSLTProcessor(data, size);
   }
   return 0;
