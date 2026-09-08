@@ -1994,7 +1994,8 @@ blink_fuzzer_test("blink_html_tokenizer_fuzzer") {
   deps = [ ":core" ]
 }
 
-# Fuzzer for SVG path string parsing
+# Fuzzer for the clipboard/paste markup sanitizer
+# (CreateStrictlyProcessedMarkupWithContext).
 blink_fuzzer_test("blink_strictly_processed_markup_fuzzer") {
   sources = [ "editing/serializers/strictly_processed_markup_fuzzer.cc" ]
   seed_corpus = "//third_party/blink/web_tests/editing/pasteboard"
@@ -2004,6 +2005,7 @@ blink_fuzzer_test("blink_strictly_processed_markup_fuzzer") {
   ]
 }
 
+# Fuzzer for SVG path string parsing
 blink_fuzzer_test("svg_path_parser_fuzzer") {
   sources = [ "svg/svg_path_parser_fuzzer.cc" ]
   deps = [
