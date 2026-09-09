@@ -1,0 +1,29 @@
+# Copyright 2026 The Chromium Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//mojo/public/tools/fuzzers/mojolpm.gni")
+import("//content/test/fuzzer/content_mojolpm_fuzzer_test.gni")
+
+content_mojolpm_fuzzer_test("extension_frame_host_mojolpm_fuzzer") {
+  sources = [ "extension_frame_host_mojolpm_fuzzer.cc" ]
+  proto_source = "extension_frame_host_mojolpm_fuzzer.proto"
+  proto_deps = [ "//extensions/common:mojom_mojolpm" ]
+  testcase_proto_kind =
+      "extensions.fuzzing.extension_frame_host.proto.Testcase"
+  seed_corpus_sources = [
+    "extension_frame_host_mojolpm_fuzzer_corpus/extension_a.textproto",
+    "extension_frame_host_mojolpm_fuzzer_corpus/extension_b.textproto",
+  ]
+
+  deps = [
+    "//content/test/fuzzer:mojolpm_fuzzer_support",
+    "//extensions/browser",
+    "//extensions/browser/api",
+    "//extensions/browser:test_support",
+    "//extensions/common",
+    "//extensions/common:mojom",
+    "//extensions/common:mojom_mojolpm",
+    "//extensions:test_support",
+  ]
+}

@@ -3,6 +3,7 @@
 
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
+import("//mojo/public/tools/bindings/mojom.gni")
 import("//testing/test.gni")
 import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
@@ -40,6 +41,13 @@ group("extensions_resources") {
     "//extensions/renderer/resources:extensions_renderer_generated_resources",
     "//extensions/renderer/resources:extensions_renderer_resources",
   ]
+}
+
+if (enable_mojom_fuzzer) {
+  group("test_fuzzers") {
+    testonly = true
+    deps = [ "//extensions/test/fuzzer:extension_frame_host_mojolpm_fuzzer" ]
+  }
 }
 
 grit("extensions_resources_grd") {
