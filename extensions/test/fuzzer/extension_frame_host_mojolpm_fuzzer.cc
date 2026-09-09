@@ -29,15 +29,15 @@
 #include "content/test/fuzzer/mojolpm_fuzzer_support.h"
 #include "content/test/test_render_frame_host.h"
 #include "content/test/test_web_contents.h"
-#include "extensions/browser/api/core_extensions_browser_api_provider.h"
 #include "extensions/browser/api/alarms/alarm_manager.h"
+#include "extensions/browser/api/core_extensions_browser_api_provider.h"
 #include "extensions/browser/api/extensions_api_client.h"
 #include "extensions/browser/core_browser_context_keyed_service_factories.h"
 #include "extensions/browser/extension_frame_host.h"
+#include "extensions/browser/extension_function_registry.h"
 #include "extensions/browser/extension_pref_value_map.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_prefs_factory.h"
-#include "extensions/browser/extension_function_registry.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_web_contents_observer.h"
 #include "extensions/browser/mock_extension_system.h"
@@ -50,9 +50,9 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extensions_client.h"
+#include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/mojom/frame.mojom-mojolpm.h"
 #include "extensions/common/mojom/frame.mojom.h"
-#include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/test/fuzzer/extension_frame_host_mojolpm_fuzzer.pb.h"
 #include "extensions/test/test_extensions_client.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
@@ -66,7 +66,8 @@ constexpr char kExtensionIdB[] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 constexpr const char* kCmdline[] = {"extension_frame_host_mojolpm_fuzzer",
                                     nullptr};
 
-class FuzzerExtensionsBrowserClient : public extensions::TestExtensionsBrowserClient {
+class FuzzerExtensionsBrowserClient
+    : public extensions::TestExtensionsBrowserClient {
  public:
   FuzzerExtensionsBrowserClient() {
     AddAPIProvider(
@@ -136,15 +137,16 @@ class FuzzerExtensionsBrowserClient : public extensions::TestExtensionsBrowserCl
 class FuzzerExtensionWebContentsObserver
     : public extensions::ExtensionWebContentsObserver {
  public:
-  explicit FuzzerExtensionWebContentsObserver(content::WebContents* web_contents)
+  explicit FuzzerExtensionWebContentsObserver(
+      content::WebContents* web_contents)
       : ExtensionWebContentsObserver(web_contents) {}
 };
 
 class FuzzerMockExtensionSystem : public extensions::MockExtensionSystem {
  public:
   explicit FuzzerMockExtensionSystem(content::BrowserContext* context)
-      : MockExtensionSystem(context), quota_service_(std::make_unique<
-                                                   extensions::QuotaService>()) {}
+      : MockExtensionSystem(context),
+        quota_service_(std::make_unique<extensions::QuotaService>()) {}
 
   extensions::QuotaService* quota_service() override {
     return quota_service_.get();
@@ -293,9 +295,8 @@ void ExtensionFrameHostTestcase::SetUpOnUIThread(
 
   auto* contents = static_cast<content::TestWebContents*>(
       test_adapter_.web_contents());
-  contents->NavigateAndCommit(
-      GURL(std::string(extensions::kExtensionScheme) + "://" + kExtensionIdA +
-           "/index.html"));
+  contents->NavigateAndCommit(GURL(std::string(extensions::kExtensionScheme) +
+                                   "://" + kExtensionIdA + "/index.html"));
   render_frame_host_ = contents->GetPrimaryMainFrame();
 
   render_frame_host_->InitializeRenderFrameIfNeeded();
@@ -355,7 +356,11 @@ void ExtensionFrameHostTestcase::RunAction(const ProtoAction& action,
       return;
     case ProtoAction::kRunUntilIdle:
       content::GetUIThreadTaskRunner({})->PostTaskAndReply(
-          FROM_HERE, base::DoNothing(), std::move(done_closure));
+          FROM_HERE, base::BindOnce([]() {
+            base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
+            run_loop.RunUntilIdle();
+          }),
+          std::move(done_closure));
       return;
     case ProtoAction::kLocalFrameHostAssociatedRemoteAction:
       mojolpm::HandleAssociatedRemoteAction(
