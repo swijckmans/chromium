@@ -1,0 +1,46 @@
+actions {
+  new_local_frame_host {
+    id: 1
+  }
+}
+actions {
+  local_frame_host_associated_remote_action {
+    id: 1
+    m_request {
+      m_params {
+        new {
+          id: 2
+          m_name: "alarms.getAll"
+          m_arguments {
+            new {
+              id: 3
+              m_storage {}
+            }
+          }
+          m_extension_id: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          m_source_url {
+            new {
+              id: 4
+              m_url: "chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html"
+            }
+          }
+          m_context_type: MojoLPM_ContextType_kPrivilegedExtension
+          m_request_id: 1
+          m_has_callback: true
+          m_user_gesture: false
+          m_worker_thread_id: -1
+          m_service_worker_version_id: -1
+        }
+      }
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+}
+sequence_indexes: 0
