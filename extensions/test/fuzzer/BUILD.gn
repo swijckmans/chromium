@@ -2,28 +2,70 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//mojo/public/tools/fuzzers/mojolpm.gni")
 import("//content/test/fuzzer/content_mojolpm_fuzzer_test.gni")
+import("//mojo/public/tools/fuzzers/mojolpm.gni")
+
+source_set("extension_mojolpm_fuzzer_support") {
+  testonly = true
+  sources = [
+    "extension_mojolpm_fuzzer_support.cc",
+    "extension_mojolpm_fuzzer_support.h",
+  ]
+
+  deps = [
+    "//components/keyed_service/content",
+    "//components/pref_registry",
+    "//components/prefs:test_support",
+    "//content/test:test_support",
+    "//content/test/fuzzer:mojolpm_fuzzer_support",
+    "//extensions:test_support",
+    "//extensions/browser",
+    "//extensions/browser:test_support",
+    "//extensions/browser/api",
+    "//extensions/common",
+  ]
+}
 
 content_mojolpm_fuzzer_test("extension_frame_host_mojolpm_fuzzer") {
   sources = [ "extension_frame_host_mojolpm_fuzzer.cc" ]
   proto_source = "extension_frame_host_mojolpm_fuzzer.proto"
   proto_deps = [ "//extensions/common:mojom_mojolpm" ]
-  testcase_proto_kind =
-      "extensions.fuzzing.extension_frame_host.proto.Testcase"
+  testcase_proto_kind = "extensions.fuzzing.extension_frame_host.proto.Testcase"
   seed_corpus_sources = [
     "extension_frame_host_mojolpm_fuzzer_corpus/extension_a.textproto",
     "extension_frame_host_mojolpm_fuzzer_corpus/extension_b.textproto",
   ]
 
   deps = [
+    ":extension_mojolpm_fuzzer_support",
     "//content/test/fuzzer:mojolpm_fuzzer_support",
     "//extensions/browser",
-    "//extensions/browser/api",
     "//extensions/browser:test_support",
+    "//extensions/browser/api",
     "//extensions/common",
     "//extensions/common:mojom",
     "//extensions/common:mojom_mojolpm",
-    "//extensions:test_support",
+  ]
+}
+
+content_mojolpm_fuzzer_test("extension_service_worker_host_mojolpm_fuzzer") {
+  sources = [ "extension_service_worker_host_mojolpm_fuzzer.cc" ]
+  proto_source = "extension_service_worker_host_mojolpm_fuzzer.proto"
+  proto_deps = [ "//extensions/common:mojom_mojolpm" ]
+  testcase_proto_kind =
+      "extensions.fuzzing.extension_service_worker_host.proto.Testcase"
+  seed_corpus_sources = [
+    "extension_service_worker_host_mojolpm_fuzzer_corpus/post_stop.textproto",
+    "extension_service_worker_host_mojolpm_fuzzer_corpus/registered_a.textproto",
+    "extension_service_worker_host_mojolpm_fuzzer_corpus/registered_b.textproto",
+  ]
+
+  deps = [
+    ":extension_mojolpm_fuzzer_support",
+    "//content/test/fuzzer:mojolpm_fuzzer_support",
+    "//extensions/browser",
+    "//extensions/common",
+    "//extensions/common:mojom",
+    "//extensions/common:mojom_mojolpm",
   ]
 }

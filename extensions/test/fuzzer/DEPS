@@ -1,0 +1,22 @@
+include_rules = [
+  "+content/common/url_schemes.h",
+  "+content/test/fuzzer/mojolpm_fuzzer_support.h",
+  "+content/test/test_render_frame_host.h",
+  "+content/test/test_web_contents.h",
+  "+components/keyed_service/content",
+  "+components/pref_registry",
+  "+services/network/public/cpp",
+  "+services/network/public/mojom",
+  "+third_party/blink/public/common",
+  "+third_party/blink/public/mojom",
+  "+third_party/libprotobuf-mutator",
+]
+
+specific_include_rules = {
+  "extension_service_worker_host_mojolpm_fuzzer\\.cc": [
+    "+content/browser/service_worker/fake_service_worker.h",
+    # Needed only for SetLoaderFactoryForUpdateCheckForTest; no
+    # //content/public API exposes it.
+    "+content/browser/service_worker/service_worker_context_wrapper.h",
+  ]
+}
