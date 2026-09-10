@@ -55,6 +55,7 @@ content_mojolpm_fuzzer_test("extension_service_worker_host_mojolpm_fuzzer") {
   testcase_proto_kind =
       "extensions.fuzzing.extension_service_worker_host.proto.Testcase"
   seed_corpus_sources = [
+    "extension_service_worker_host_mojolpm_fuzzer_corpus/duplicate_init.textproto",
     "extension_service_worker_host_mojolpm_fuzzer_corpus/post_stop.textproto",
     "extension_service_worker_host_mojolpm_fuzzer_corpus/registered_a.textproto",
     "extension_service_worker_host_mojolpm_fuzzer_corpus/registered_b.textproto",

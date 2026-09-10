@@ -1,0 +1,21 @@
+actions {
+  new_service_worker_host {
+    id: 1
+  }
+}
+actions {
+  register_worker {
+    id: 1
+  }
+}
+actions {
+  run_until_idle {}
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+  action_indexes: 1
+  action_indexes: 2
+}
+sequence_indexes: 0
