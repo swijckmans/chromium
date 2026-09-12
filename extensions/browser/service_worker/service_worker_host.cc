@@ -268,8 +268,13 @@ void ServiceWorkerHost::DidStopServiceWorkerContext(
         render_process_host_, bad_message::SWH_INVALID_SERVICE_WORKER_SCOPE);
     return;
   }
-  CHECK_NE(blink::mojom::kInvalidServiceWorkerVersionId,
-           service_worker_version_id);
+  if (service_worker_version_id ==
+      blink::mojom::kInvalidServiceWorkerVersionId) {
+    bad_message::ReceivedBadMessage(
+        render_process_host_,
+        bad_message::SWH_INVALID_SERVICE_WORKER_VERSION_ID);
+    return;
+  }
   ServiceWorkerTaskQueue::Get(browser_context)
       ->RendererDidStopServiceWorkerContext(
           render_process_id, extension_id, activation_token,

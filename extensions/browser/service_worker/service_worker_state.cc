@@ -236,23 +236,21 @@ bool ServiceWorkerState::RendererDidInitializeServiceWorkerContext(
     // `kInitialized`, and set the `worker_id`.
     CHECK(worker_id_.has_value());
 
-    // For a given service worker instance, we can only see one
-    // `RendererDidInitializeServiceWorkerContext` and it will always come
-    // before the associated `RendererDidStartServiceWorkerContext`. So we
-    // can't see the same token twice here.
-    auto preexisting_token = *worker_id_->start_token;
-    auto new_token = *worker_id.start_token;
-    CHECK_NE(preexisting_token, new_token);
+    // These values come from the renderer, which can repeat or replay this
+    // message, so a worker instance that is already tracked is dropped rather
+    // than asserted against.
+    if (*worker_id.start_token == *worker_id_->start_token) {
+      // Drop the IPC message. It duplicates the tracked worker instance.
+      return false;
+    }
 
     auto preexisting_version_id = worker_id_->version_id;
     auto new_version_id = worker_id.version_id;
     RecordWorkerVersionIdStateHistogram(new_version_id, preexisting_version_id);
 
-    // We don't expect to see this method being called twice for the same
-    // service worker version, and histograms confirm it, so let's assert it.
-    CHECK_NE(preexisting_version_id, new_version_id);
-    if (new_version_id < preexisting_version_id) {
-      // Drop the IPC message. It is from a stale worker version.
+    if (new_version_id <= preexisting_version_id) {
+      // Drop the IPC message. It is from a stale or already tracked worker
+      // version.
       return false;
     }
 

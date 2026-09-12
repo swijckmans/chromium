@@ -82,6 +82,7 @@ enum BadMessageReason {
   WER_INVALID_EXTENSION_ID = 42,
   AER_INVALID_PROCESS_FOR_AUTOMATION_BINDING = 43,
   MS_EMPTY_ANDROID_CERTIFICATES_FOR_PACKED_EXTENSION = 44,
+  SWH_INVALID_SERVICE_WORKER_VERSION_ID = 45,
   // Please add new elements here. The naming convention is abbreviated class
   // name (e.g. ExtensionHost becomes EH) plus a unique description of the
   // reason. After making changes, you MUST update histograms.xml by running:

@@ -1966,7 +1966,10 @@ void EventRouter::BindServiceWorkerEventDispatcher(
   ObserveProcess(process);
   mojo::AssociatedRemote<mojom::EventDispatcher>& worker_dispatcher =
       rph_dispatcher_map_[process][worker_thread_id];
-  CHECK(!worker_dispatcher);
+  // The renderer chooses `worker_thread_id` and can bind a new dispatcher
+  // before the previous pipe for the same thread is observed as disconnected,
+  // so an existing binding is replaced rather than asserted against.
+  worker_dispatcher.reset();
   worker_dispatcher.Bind(std::move(event_dispatcher));
   worker_dispatcher.set_disconnect_handler(
       base::BindOnce(&EventRouter::UnbindServiceWorkerEventDispatcher,
