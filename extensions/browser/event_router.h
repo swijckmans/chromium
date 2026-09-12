@@ -20,6 +20,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/scoped_observation.h"
+#include "base/unguessable_token.h"
 #include "base/values.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "content/public/browser/render_process_host_observer.h"
@@ -644,7 +645,8 @@ class EventRouter : public KeyedService,
   void RenderProcessHostDestroyed(content::RenderProcessHost* host) override;
 
   void UnbindServiceWorkerEventDispatcher(content::RenderProcessHost* host,
-                                          int worker_thread_id);
+                                          int worker_thread_id,
+                                          base::UnguessableToken binding_token);
 
   const raw_ptr<content::BrowserContext> browser_context_;
 
@@ -677,6 +679,10 @@ class EventRouter : public KeyedService,
       std::map<int /*worker_thread_id*/,
                mojo::AssociatedRemote<mojom::EventDispatcher>>;
   std::map<content::RenderProcessHost*, DispatcherMap> rph_dispatcher_map_;
+  using DispatcherTokenMap =
+      std::map<int /*worker_thread_id*/, base::UnguessableToken>;
+  std::map<content::RenderProcessHost*, DispatcherTokenMap>
+      rph_dispatcher_token_map_;
 
   // Listener registration phases for service worker instances.
   ListenerRegistrationPhaseMap listener_registration_phases_;
