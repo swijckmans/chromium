@@ -1045,7 +1045,6 @@ void EventRouter::RenderProcessExited(
   event_ack_data_.ClearUnackedEventsForRenderProcess(host->GetDeprecatedID());
   observed_process_set_.erase(host);
   rph_dispatcher_map_.erase(host);
-  rph_dispatcher_token_map_.erase(host);
   host->RemoveObserver(this);
 }
 
@@ -1054,7 +1053,6 @@ void EventRouter::RenderProcessHostDestroyed(RenderProcessHost* host) {
   event_ack_data_.ClearUnackedEventsForRenderProcess(host->GetDeprecatedID());
   observed_process_set_.erase(host);
   rph_dispatcher_map_.erase(host);
-  rph_dispatcher_token_map_.erase(host);
   host->RemoveObserver(this);
 }
 
@@ -1972,36 +1970,19 @@ void EventRouter::BindServiceWorkerEventDispatcher(
   // before the previous pipe for the same thread is observed as disconnected,
   // so an existing binding is replaced rather than asserted against.
   worker_dispatcher.reset();
-  const base::UnguessableToken binding_token = base::UnguessableToken::Create();
-  rph_dispatcher_token_map_[process][worker_thread_id] = binding_token;
   worker_dispatcher.Bind(std::move(event_dispatcher));
-  worker_dispatcher.set_disconnect_handler(base::BindOnce(
-      &EventRouter::UnbindServiceWorkerEventDispatcher,
-      weak_factory_.GetWeakPtr(), process, worker_thread_id, binding_token));
+  worker_dispatcher.set_disconnect_handler(
+      base::BindOnce(&EventRouter::UnbindServiceWorkerEventDispatcher,
+                     weak_factory_.GetWeakPtr(), process, worker_thread_id));
 }
 
-void EventRouter::UnbindServiceWorkerEventDispatcher(
-    RenderProcessHost* host,
-    int worker_thread_id,
-    base::UnguessableToken binding_token) {
-  auto token_map = rph_dispatcher_token_map_.find(host);
-  if (token_map == rph_dispatcher_token_map_.end()) {
+void EventRouter::UnbindServiceWorkerEventDispatcher(RenderProcessHost* host,
+                                                     int worker_thread_id) {
+  auto map = rph_dispatcher_map_.find(host);
+  if (map == rph_dispatcher_map_.end()) {
     return;
   }
-  auto token = token_map->second.find(worker_thread_id);
-  if (token == token_map->second.end() || token->second != binding_token) {
-    return;
-  }
-  token_map->second.erase(token);
-  if (token_map->second.empty()) {
-    rph_dispatcher_token_map_.erase(token_map);
-  }
-
-  auto dispatcher_map = rph_dispatcher_map_.find(host);
-  if (dispatcher_map == rph_dispatcher_map_.end()) {
-    return;
-  }
-  dispatcher_map->second.erase(worker_thread_id);
+  map->second.erase(worker_thread_id);
 }
 
 Event::Event(events::HistogramValue histogram_value,
