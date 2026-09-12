@@ -368,6 +368,7 @@ void ServiceWorkerHostTestcase::SetUpOnFuzzerThread(
 
 void ServiceWorkerHostTestcase::TearDown(base::OnceClosure done_closure) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  event_dispatcher_receivers_.clear();
   mojolpm::GetContext()->EndTestcase();
   content::GetUIThreadTaskRunner({})->PostTask(
       FROM_HERE,
@@ -388,7 +389,6 @@ void ServiceWorkerHostTestcase::TearDownOnUIThread(
 
 void ServiceWorkerHostTestcase::FinishTearDownOnUIThread(
     base::OnceClosure done_closure) {
-  event_dispatcher_receivers_.clear();
   embedded_worker_client_.TearDown();
   world_.TearDown();
   base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
