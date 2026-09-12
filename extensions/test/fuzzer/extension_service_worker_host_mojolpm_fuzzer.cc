@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include "base/check.h"
 #include "base/containers/span.h"
@@ -252,8 +253,9 @@ class ServiceWorkerHostTestcase
   content::mojolpm::RenderViewHostTestHarnessAdapter test_adapter_;
   extensions::mojolpm::ExtensionFuzzerWorld world_{&test_adapter_};
   FuzzerEventDispatcher event_dispatcher_;
-  mojo::AssociatedReceiver<extensions::mojom::EventDispatcher>
-      event_dispatcher_receiver_{&event_dispatcher_};
+  std::vector<std::unique_ptr<
+      mojo::AssociatedReceiver<extensions::mojom::EventDispatcher>>>
+      event_dispatcher_receivers_;
   FuzzerEmbeddedWorkerInstanceClient embedded_worker_client_;
   base::UnguessableToken activation_token_;
   blink::ServiceWorkerToken worker_token_;
@@ -386,7 +388,7 @@ void ServiceWorkerHostTestcase::TearDownOnUIThread(
 
 void ServiceWorkerHostTestcase::FinishTearDownOnUIThread(
     base::OnceClosure done_closure) {
-  event_dispatcher_receiver_.reset();
+  event_dispatcher_receivers_.clear();
   embedded_worker_client_.TearDown();
   world_.TearDown();
   base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
@@ -471,9 +473,12 @@ void ServiceWorkerHostTestcase::RegisterWorker(
               mojo::AssociatedRemote<extensions::mojom::ServiceWorkerHost>>(
               action.id());
   if (remote) {
-    event_dispatcher_receiver_.reset();
+    auto event_dispatcher_receiver = std::make_unique<
+        mojo::AssociatedReceiver<extensions::mojom::EventDispatcher>>(
+        &event_dispatcher_);
     auto event_remote =
-        event_dispatcher_receiver_.BindNewEndpointAndPassRemote();
+        event_dispatcher_receiver->BindNewEndpointAndPassRemote();
+    event_dispatcher_receivers_.push_back(std::move(event_dispatcher_receiver));
     remote->get()->DidInitializeServiceWorkerContext(
         extensions::mojolpm::kExtensionIdA, activation_token_,
         registered_version_id_, registered_thread_id_, worker_token_,
