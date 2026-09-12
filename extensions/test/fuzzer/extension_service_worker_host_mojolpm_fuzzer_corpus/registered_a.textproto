@@ -1,0 +1,52 @@
+actions {
+  new_service_worker_host {
+    id: 1
+  }
+}
+actions {
+  register_worker {
+    id: 1
+  }
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  service_worker_host_associated_remote_action {
+    id: 1
+    m_request_worker {
+      m_params {
+        new {
+          id: 2
+          m_name: "alarms.getAll"
+          m_arguments {
+            new {
+              id: 3
+              m_storage {}
+            }
+          }
+          m_extension_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          m_source_url {
+            new {
+              id: 4
+              m_url: "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+            }
+          }
+          m_context_type: MojoLPM_ContextType_kPrivilegedExtension
+          m_request_id: 1
+          m_has_callback: true
+          m_user_gesture: false
+          m_worker_thread_id: 1
+          m_service_worker_version_id: 0
+        }
+      }
+    }
+  }
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+  action_indexes: 3
+}
+sequence_indexes: 0

@@ -1,0 +1,79 @@
+# Repro seed for the third renderer->browser CHECK-crash variant:
+# ServiceWorkerHost::DidStopServiceWorkerContext hits
+#   CHECK_NE(kInvalidServiceWorkerVersionId, service_worker_version_id)
+# (extensions/browser/service_worker/service_worker_host.cc:271)
+# when a compromised extension renderer sends version_id == -1
+# (blink::mojom::kInvalidServiceWorkerVersionId) with an otherwise valid
+# extension id / scope. Every guard above the CHECK passes:
+#   - browser_context present
+#   - ProcessMap contains (kExtensionIdA, process)  [set up by register_worker]
+#   - scope scheme == chrome-extension and scope host == extension id
+#   - worker_thread_id != kMainThreadId (0)  [avoids the DCHECK at :258]
+# so the renderer-controlled -1 reaches the browser-process CHECK.
+#
+# Top-level message:
+#   extensions.fuzzing.extension_service_worker_host.proto.Testcase
+actions {
+  new_service_worker_host {
+    id: 1
+  }
+}
+actions {
+  register_worker {
+    id: 1
+  }
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  service_worker_host_associated_remote_action {
+    id: 1
+    m_did_stop_service_worker_context {
+      m_extension_id {
+        new {
+          id: 2
+          m_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+      m_activation_token {
+        new {
+          id: 3
+          m_high: 1
+          m_low: 1
+        }
+      }
+      m_service_worker_scope {
+        new {
+          id: 4
+          m_url: "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+        }
+      }
+      m_service_worker_version_id: -1
+      m_worker_thread_id: 1
+      m_service_worker_token {
+        new {
+          id: 5
+          m_value {
+            new {
+              id: 6
+              m_high: 2
+              m_low: 2
+            }
+          }
+        }
+      }
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+  action_indexes: 3
+  action_indexes: 4
+}
+sequence_indexes: 0

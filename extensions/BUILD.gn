@@ -46,7 +46,10 @@ group("extensions_resources") {
 if (enable_mojom_fuzzer) {
   group("test_fuzzers") {
     testonly = true
-    deps = [ "//extensions/test/fuzzer:extension_frame_host_mojolpm_fuzzer" ]
+    deps = [
+      "//extensions/test/fuzzer:extension_frame_host_mojolpm_fuzzer",
+      "//extensions/test/fuzzer:extension_service_worker_host_mojolpm_fuzzer",
+    ]
   }
 }
 

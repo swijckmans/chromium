@@ -1,0 +1,41 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto2";
+
+package extensions.fuzzing.extension_service_worker_host.proto;
+
+import "extensions/common/mojom/service_worker_host.mojom.mojolpm.proto";
+
+message NewServiceWorkerHostAction {
+  required uint32 id = 1;
+}
+
+message RegisterWorkerAction {
+  required uint32 id = 1;
+  optional int64 version_id = 2;
+  optional int32 thread_id = 3;
+}
+
+message RunUntilIdleAction {}
+
+message Action {
+  oneof action {
+    NewServiceWorkerHostAction new_service_worker_host = 1;
+    RegisterWorkerAction register_worker = 2;
+    RunUntilIdleAction run_until_idle = 3;
+    mojolpm.extensions.mojom.ServiceWorkerHost.AssociatedRemoteAction
+        service_worker_host_associated_remote_action = 4;
+  }
+}
+
+message Sequence {
+  repeated uint32 action_indexes = 1 [packed = true];
+}
+
+message Testcase {
+  repeated Action actions = 1;
+  repeated Sequence sequences = 2;
+  repeated uint32 sequence_indexes = 3 [packed = true];
+}
