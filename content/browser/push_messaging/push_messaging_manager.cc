@@ -227,10 +227,6 @@ void PushMessagingManager::Subscribe(
 
   data.requesting_storage_key = storage_key;
 
-  CHECK(!(data.options->application_server_key.empty() &&
-          IsRequestFromDocument(render_frame_id_)),
-        base::NotFatalUntil::M159);
-
   int64_t registration_id = data.service_worker_registration_id;
   service_worker_context_->GetRegistrationUserData(
       registration_id,
