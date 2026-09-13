@@ -13,12 +13,14 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_future.h"
 #include "content/browser/bad_message.h"
 #include "content/browser/origin_agent_cluster_isolation_state.h"
 #include "content/browser/security/cpsp/child_process_security_policy_impl.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/browser/service_worker/service_worker_registration.h"
+#include "content/browser/service_worker/service_worker_version.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
@@ -225,6 +227,75 @@ class PushMessagingManagerFencedFrameTest
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
+
+class PushMessagingManagerDocumentTest : public RenderViewHostImplTestHarness {
+ public:
+  PushMessagingManagerDocumentTest() = default;
+  ~PushMessagingManagerDocumentTest() override = default;
+
+  void SetUp() override {
+    RenderViewHostImplTestHarness::SetUp();
+    NavigateAndCommit(GURL("https://example.com/"));
+
+    sw_context_ =
+        base::WrapRefCounted(static_cast<ServiceWorkerContextWrapper*>(
+            main_rfh()->GetStoragePartition()->GetServiceWorkerContext()));
+
+    push_manager_ = std::make_unique<PushMessagingManager>(
+        *main_rfh()->GetProcess(), main_rfh()->GetRoutingID(), sw_context_);
+  }
+
+  void TearDown() override {
+    push_manager_.reset();
+    sw_context_.reset();
+    RenderViewHostImplTestHarness::TearDown();
+  }
+
+ protected:
+  scoped_refptr<ServiceWorkerRegistration> CreateNormalFrameRegistration(
+      int64_t registration_id) {
+    auto sw_options = blink::mojom::ServiceWorkerRegistrationOptions::New();
+    sw_options->scope = GURL("https://example.com/");
+    return ServiceWorkerRegistration::Create(
+        *sw_options,
+        blink::StorageKey::CreateFromStringForTesting("https://example.com/"),
+        registration_id, sw_context_->context()->AsWeakPtr(),
+        blink::mojom::AncestorFrameType::kNormalFrame);
+  }
+
+  scoped_refptr<ServiceWorkerContextWrapper> sw_context_;
+  std::unique_ptr<PushMessagingManager> push_manager_;
+};
+
+TEST_F(PushMessagingManagerDocumentTest,
+       SubscribeWithoutApplicationServerKeyFromDocument) {
+  constexpr int64_t kServiceWorkerRegistrationId = 42;
+  scoped_refptr<ServiceWorkerRegistration> registration =
+      CreateNormalFrameRegistration(kServiceWorkerRegistrationId);
+
+  auto version = base::MakeRefCounted<ServiceWorkerVersion>(
+      registration.get(), GURL("https://example.com/sw.js"),
+      blink::mojom::ScriptType::kClassic, /*version_id=*/1, mojo::NullRemote(),
+      sw_context_->context()->AsWeakPtr(), std::nullopt, std::nullopt,
+      PolicyContainerPolicies());
+  version->set_fetch_handler_type(
+      ServiceWorkerVersion::FetchHandlerType::kNotSkippable);
+  version->SetStatus(ServiceWorkerVersion::ACTIVATED);
+  registration->SetActiveVersion(version);
+
+  base::test::TestFuture<blink::mojom::PushRegistrationStatus,
+                         blink::mojom::PushSubscriptionPtr>
+      future;
+  base::HistogramTester histogram_tester;
+  push_manager_->Subscribe(kServiceWorkerRegistrationId,
+                           blink::mojom::PushSubscriptionOptions::New(),
+                           /*user_gesture=*/true, future.GetCallback());
+
+  EXPECT_EQ(future.Get<0>(),
+            blink::mojom::PushRegistrationStatus::NO_SENDER_ID);
+  histogram_tester.ExpectTotalCount("Stability.BadMessageTerminated.Content",
+                                    0);
+}
 
 // Verifies that a frame nested within a fenced frame may not subscribe to push
 // notifications via a service worker registration that belongs to a normal
