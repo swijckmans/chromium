@@ -17,6 +17,7 @@
 #include "content/browser/service_worker/embedded_worker_test_helper.h"
 #include "content/browser/service_worker/fake_embedded_worker_instance_client.h"
 #include "content/browser/service_worker/service_worker_client.h"
+#include "content/browser/service_worker/service_worker_consts.h"
 #include "content/browser/service_worker/service_worker_container_host.h"
 #include "content/browser/service_worker/service_worker_context_core.h"
 #include "content/browser/service_worker/service_worker_registration.h"
@@ -29,11 +30,17 @@
 #include "content/public/test/test_browser_context.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
+#include "mojo/public/cpp/bindings/associated_remote.h"
+#include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/system/data_pipe.h"
+#include "mojo/public/cpp/test_support/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/loader/url_loader_factory_bundle.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_registration.mojom.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_registration_options.mojom.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_state.mojom.h"
+#include "third_party/blink/public/mojom/worker/dedicated_worker_host_factory.mojom.h"
 #include "url/origin.h"
 
 namespace content {
@@ -107,6 +114,51 @@ class MockServiceWorkerObject : public blink::mojom::ServiceWorkerObject {
   blink::mojom::ServiceWorkerObjectInfoPtr info_;
   blink::mojom::ServiceWorkerState state_;
   mojo::AssociatedReceiver<blink::mojom::ServiceWorkerObject> receiver_;
+};
+
+class MockDedicatedWorkerHostFactoryClient
+    : public blink::mojom::DedicatedWorkerHostFactoryClient {
+ public:
+  explicit MockDedicatedWorkerHostFactoryClient(
+      mojo::PendingReceiver<blink::mojom::DedicatedWorkerHostFactoryClient>
+          receiver)
+      : receiver_(this, std::move(receiver)) {}
+  ~MockDedicatedWorkerHostFactoryClient() override = default;
+
+  void OnWorkerHostCreated(
+      mojo::PendingRemote<blink::mojom::BrowserInterfaceBroker>
+          browser_interface_broker,
+      mojo::PendingRemote<blink::mojom::DedicatedWorkerHost> host,
+      const url::Origin& origin) override {}
+
+  void OnScriptLoadStarted(
+      blink::mojom::ServiceWorkerContainerInfoForClientPtr
+          service_worker_container_info,
+      blink::mojom::WorkerMainScriptLoadParamsPtr main_script_load_params,
+      std::unique_ptr<blink::PendingURLLoaderFactoryBundle>
+          subresource_loader_factories,
+      mojo::PendingReceiver<blink::mojom::SubresourceLoaderUpdater>
+          subresource_loader_updater,
+      blink::mojom::ControllerServiceWorkerInfoPtr controller_info,
+      mojo::PendingRemote<blink::mojom::BackForwardCacheControllerHost>
+          back_forward_cache_controller_host,
+      blink::mojom::PolicyContainerPtr policy_container,
+      mojo::PendingReceiver<blink::mojom::ReportingObserver>
+          coep_reporting_observer,
+      mojo::PendingReceiver<blink::mojom::ReportingObserver>
+          dip_reporting_observer) override {
+    controller_info_ = std::move(controller_info);
+  }
+
+  void OnScriptLoadStartFailed() override {}
+
+  blink::mojom::ControllerServiceWorkerInfoPtr TakeControllerInfo() {
+    return std::move(controller_info_);
+  }
+
+ private:
+  blink::mojom::ControllerServiceWorkerInfoPtr controller_info_;
+  mojo::Receiver<blink::mojom::DedicatedWorkerHostFactoryClient> receiver_;
 };
 
 class ServiceWorkerObjectHostTest : public testing::Test {
@@ -456,6 +508,92 @@ TEST_F(ServiceWorkerObjectHostTest, DispatchExtendableMessageEvent_FromClient) {
             events[0]->source_info_for_client->client_uuid);
   EXPECT_EQ(service_worker_client->GetClientType(),
             events[0]->source_info_for_client->client_type);
+}
+
+TEST_F(ServiceWorkerObjectHostTest,
+       PostMessageToServiceWorkerFromUnsupportedWorkerClient) {
+  const GURL scope("https://www.example.com/");
+  const blink::StorageKey key =
+      blink::StorageKey::CreateFirstParty(url::Origin::Create(scope));
+  const GURL script_url("https://www.example.com/service_worker.js");
+  Initialize(std::make_unique<EmbeddedWorkerTestHelper>(base::FilePath()));
+  SetUpRegistration(scope, script_url, key);
+
+  version_->SetStatus(ServiceWorkerVersion::ACTIVATED);
+  registration_->SetActiveVersion(version_);
+
+  ScopedServiceWorkerClient service_worker_client =
+      helper_->context()
+          ->service_worker_client_owner()
+          .CreateServiceWorkerClientForWorker(
+              helper_->mock_render_process_id(),
+              ServiceWorkerClientInfo(blink::SharedWorkerToken()));
+  service_worker_client->UpdateUrls(scope, url::Origin::Create(scope), key);
+  CommittedServiceWorkerClient committed_service_worker_client(
+      std::move(service_worker_client));
+  committed_service_worker_client->SetControllerRegistration(
+      registration_, false /* notify_controllerchange */);
+  ASSERT_TRUE(committed_service_worker_client->controller());
+
+  mojo::Remote<blink::mojom::DedicatedWorkerHostFactoryClient>
+      worker_host_factory_client;
+  auto mock_worker_host_factory_client =
+      std::make_unique<MockDedicatedWorkerHostFactoryClient>(
+          worker_host_factory_client.BindNewPipeAndPassReceiver());
+  blink::mojom::ControllerServiceWorkerInfoPtr controller_info =
+      static_cast<ServiceWorkerContainerHostForClient&>(
+          committed_service_worker_client.container_host())
+          .CreateControllerServiceWorkerInfo();
+  auto main_script_load_params =
+      blink::mojom::WorkerMainScriptLoadParams::New();
+  main_script_load_params->response_head =
+      network::mojom::URLResponseHead::New();
+  mojo::ScopedDataPipeProducerHandle producer;
+  mojo::ScopedDataPipeConsumerHandle consumer;
+  ASSERT_EQ(mojo::CreateDataPipe(nullptr, producer, consumer), MOJO_RESULT_OK);
+  main_script_load_params->response_body = std::move(consumer);
+  mojo::PendingRemote<blink::mojom::SubresourceLoaderUpdater>
+      subresource_loader_updater_remote;
+  auto subresource_loader_updater_receiver =
+      subresource_loader_updater_remote.InitWithNewPipeAndPassReceiver();
+  mojo::PendingRemote<blink::mojom::BackForwardCacheControllerHost>
+      back_forward_cache_controller_host_remote;
+  auto back_forward_cache_controller_host_receiver =
+      back_forward_cache_controller_host_remote
+          .InitWithNewPipeAndPassReceiver();
+  auto policy_container = blink::mojom::PolicyContainer::New();
+  policy_container->policies = blink::mojom::PolicyContainerPolicies::New();
+  mojo::AssociatedRemote<blink::mojom::PolicyContainerHost>
+      policy_container_host_remote;
+  auto policy_container_host_receiver =
+      policy_container_host_remote.BindNewEndpointAndPassReceiver();
+  policy_container->remote = policy_container_host_remote.Unbind();
+  worker_host_factory_client->OnScriptLoadStarted(
+      nullptr, std::move(main_script_load_params),
+      std::make_unique<blink::PendingURLLoaderFactoryBundle>(),
+      std::move(subresource_loader_updater_receiver),
+      std::move(controller_info),
+      std::move(back_forward_cache_controller_host_remote),
+      std::move(policy_container),
+      mojo::PendingReceiver<blink::mojom::ReportingObserver>(),
+      mojo::PendingReceiver<blink::mojom::ReportingObserver>());
+  worker_host_factory_client.FlushForTesting();
+  controller_info = mock_worker_host_factory_client->TakeControllerInfo();
+  ASSERT_TRUE(controller_info);
+  ASSERT_TRUE(controller_info->object_info);
+  mojo::AssociatedRemote<blink::mojom::ServiceWorkerObjectHost>
+      object_host_remote;
+  object_host_remote.Bind(std::move(controller_info->object_info->host_remote));
+
+  blink::TransferableMessage message;
+  message.sender_agent_cluster_id = base::UnguessableToken::Create();
+  SetUpDummyMessagePort(&message.ports);
+  mojo::test::BadMessageObserver bad_message_observer;
+  object_host_remote->PostMessageToServiceWorker(std::move(message));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_NE(std::string::npos,
+            bad_message_observer.WaitForBadMessage().find(
+                ServiceWorkerConsts::kBadMessageFromUnsupportedClient));
 }
 
 // This is a regression test for https://crbug.com/1056598.

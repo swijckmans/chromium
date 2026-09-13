@@ -1428,7 +1428,9 @@ void ServiceWorkerContainerHostForClient::DispatchExtendableMessageEvent(
                        url::Origin::Create(url()), std::move(callback)));
   } else {
     // No other clients are allowed to send messages.
-    NOTREACHED();
+    mojo::ReportBadMessage(
+        ServiceWorkerConsts::kBadMessageFromUnsupportedClient);
+    std::move(callback).Run(blink::ServiceWorkerStatusCode::kErrorAbort);
   }
 }
 
