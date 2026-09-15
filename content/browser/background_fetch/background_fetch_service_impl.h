@@ -66,9 +66,9 @@ class CONTENT_EXPORT BackgroundFetchServiceImpl
                        GetDeveloperIdsCallback callback) override;
 
  private:
-  // Validates and returns whether the |developer_id|, |unique_id|, |requests|
-  // and |title| respectively have valid values. The renderer will be flagged
-  // for having sent a bad message if the values are invalid.
+  // Validates renderer-provided IDs and request data. The renderer will be
+  // flagged for having sent a bad message if the values are invalid.
+  [[nodiscard]] bool ValidateServiceWorkerRegistrationId(int64_t id);
   [[nodiscard]] bool ValidateDeveloperId(const std::string& developer_id);
   [[nodiscard]] bool ValidateUniqueId(const std::string& unique_id);
   [[nodiscard]] bool ValidateRequests(

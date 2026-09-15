@@ -138,7 +138,8 @@ void BackgroundFetchServiceImpl::Fetch(
     FetchCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!ValidateDeveloperId(developer_id) || !ValidateRequests(requests)) {
+  if (!ValidateServiceWorkerRegistrationId(service_worker_registration_id) ||
+      !ValidateDeveloperId(developer_id) || !ValidateRequests(requests)) {
     std::move(callback).Run(
         blink::mojom::BackgroundFetchError::INVALID_ARGUMENT,
         /* registration= */ nullptr);
@@ -169,7 +170,8 @@ void BackgroundFetchServiceImpl::GetRegistration(
     const std::string& developer_id,
     GetRegistrationCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!ValidateDeveloperId(developer_id)) {
+  if (!ValidateServiceWorkerRegistrationId(service_worker_registration_id) ||
+      !ValidateDeveloperId(developer_id)) {
     std::move(callback).Run(
         blink::mojom::BackgroundFetchError::INVALID_ARGUMENT,
         /* registration= */ nullptr);
@@ -185,8 +187,26 @@ void BackgroundFetchServiceImpl::GetDeveloperIds(
     int64_t service_worker_registration_id,
     GetDeveloperIdsCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!ValidateServiceWorkerRegistrationId(service_worker_registration_id)) {
+    std::move(callback).Run(
+        blink::mojom::BackgroundFetchError::INVALID_ARGUMENT, {});
+    return;
+  }
+
   background_fetch_context_->GetDeveloperIdsForServiceWorker(
       service_worker_registration_id, storage_key_, std::move(callback));
+}
+
+bool BackgroundFetchServiceImpl::ValidateServiceWorkerRegistrationId(
+    int64_t id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (id == blink::mojom::kInvalidServiceWorkerRegistrationId) {
+    mojo::ReportBadMessage("Invalid service_worker_registration_id");
+    return false;
+  }
+
+  return true;
 }
 
 bool BackgroundFetchServiceImpl::ValidateDeveloperId(
