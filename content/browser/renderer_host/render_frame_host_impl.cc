@@ -16149,12 +16149,14 @@ bool RenderFrameHostImpl::ValidateDidCommitParams(
   }
 
   // Fenced frame roots must only use PAGE_TRANSITION_AUTO_SUBFRAME (plus
-  // optional client redirect qualifier). Fenced frames are being removed and
-  // shouldn't be enabled by default (see crbug.com/540020472), hence a CHECK is
-  // used here instead of a bad message.
-  if (IsFencedFrameRoot()) {
-    CHECK(ui::PageTransitionCoreTypeIs(transition,
-                                       ui::PAGE_TRANSITION_AUTO_SUBFRAME));
+  // optional client redirect qualifier).
+  if (IsFencedFrameRoot() &&
+      !ui::PageTransitionCoreTypeIs(transition,
+                                    ui::PAGE_TRANSITION_AUTO_SUBFRAME)) {
+    bad_message::ReceivedBadMessage(
+        process,
+        bad_message::RFH_COMMIT_NAVIGATION_FENCED_FRAME_TRANSITION_MISMATCH);
+    return false;
   }
 
   // Ensure the renderer does not add privileged / browser-only qualifiers.

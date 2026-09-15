@@ -4470,6 +4470,82 @@ TEST_F(NavigationControllerFencedFrameTest, NoURLRewriteForFencedFrames) {
   BrowserURLHandlerImpl::GetInstance()->RemoveHandlerForTesting(&URLRewriter);
 }
 
+TEST_F(NavigationControllerFencedFrameTest,
+       FencedFrameTransitionMismatchIsBadMessage) {
+  const GURL kUrl1("http://google.com");
+  const GURL kUrl2("http://chromium.org");
+  const GURL same_document_url("http://chromium.org#a");
+
+  NavigationSimulator::NavigateAndCommitFromDocument(kUrl1, main_test_rfh());
+  TestRenderFrameHost* fenced_frame_root =
+      static_cast<TestRenderFrameHost*>(main_test_rfh()->AppendFencedFrame());
+  std::unique_ptr<NavigationSimulator> navigation_simulator =
+      NavigationSimulator::CreateRendererInitiated(kUrl2, fenced_frame_root);
+  navigation_simulator->Commit();
+  fenced_frame_root = static_cast<TestRenderFrameHost*>(
+      navigation_simulator->GetFinalRenderFrameHost());
+
+  auto params = mojom::DidCommitProvisionalLoadParams::New();
+  params->did_create_new_entry = false;
+  params->url = same_document_url;
+  params->origin = url::Origin::Create(same_document_url);
+  params->referrer = blink::mojom::Referrer::New();
+  params->transition = ui::PAGE_TRANSITION_MANUAL_SUBFRAME;
+  params->should_update_history = true;
+  params->method = "GET";
+  params->page_state = blink::PageState::CreateFromURL(same_document_url);
+  params->post_id = -1;
+  params->document_sequence_number = 1;
+
+  auto* process =
+      static_cast<MockRenderProcessHost*>(fenced_frame_root->GetProcess());
+  EXPECT_EQ(0, process->bad_msg_count());
+  fenced_frame_root->SendDidCommitSameDocumentNavigation(
+      std::move(params), blink::mojom::SameDocumentNavigationType::kFragment,
+      false);
+
+  EXPECT_EQ(1, process->bad_msg_count());
+  EXPECT_EQ(kUrl2, fenced_frame_root->GetLastCommittedURL());
+}
+
+TEST_F(NavigationControllerFencedFrameTest,
+       FencedFrameAutoSubframeTransitionIsAccepted) {
+  const GURL kUrl1("http://google.com");
+  const GURL kUrl2("http://chromium.org");
+  const GURL same_document_url("http://chromium.org#a");
+
+  NavigationSimulator::NavigateAndCommitFromDocument(kUrl1, main_test_rfh());
+  TestRenderFrameHost* fenced_frame_root =
+      static_cast<TestRenderFrameHost*>(main_test_rfh()->AppendFencedFrame());
+  std::unique_ptr<NavigationSimulator> navigation_simulator =
+      NavigationSimulator::CreateRendererInitiated(kUrl2, fenced_frame_root);
+  navigation_simulator->Commit();
+  fenced_frame_root = static_cast<TestRenderFrameHost*>(
+      navigation_simulator->GetFinalRenderFrameHost());
+
+  auto params = mojom::DidCommitProvisionalLoadParams::New();
+  params->did_create_new_entry = false;
+  params->url = same_document_url;
+  params->origin = url::Origin::Create(same_document_url);
+  params->referrer = blink::mojom::Referrer::New();
+  params->transition = ui::PAGE_TRANSITION_AUTO_SUBFRAME;
+  params->should_update_history = true;
+  params->method = "GET";
+  params->page_state = blink::PageState::CreateFromURL(same_document_url);
+  params->post_id = -1;
+  params->document_sequence_number = 1;
+
+  auto* process =
+      static_cast<MockRenderProcessHost*>(fenced_frame_root->GetProcess());
+  EXPECT_EQ(0, process->bad_msg_count());
+  fenced_frame_root->SendDidCommitSameDocumentNavigation(
+      std::move(params), blink::mojom::SameDocumentNavigationType::kFragment,
+      true);
+
+  EXPECT_EQ(0, process->bad_msg_count());
+  EXPECT_EQ(same_document_url, fenced_frame_root->GetLastCommittedURL());
+}
+
 TEST_F(NavigationControllerTest, NavigationApiHistoryEntries_OpaqueOrigin) {
   NavigationControllerImpl& controller = controller_impl();
 
