@@ -1604,6 +1604,32 @@ TEST_F(RenderFrameHostImplTest, CreateNewWindowInvalidDisposition) {
   EXPECT_EQ(1, process()->bad_msg_count());
 }
 
+TEST_F(RenderFrameHostImplTest, EnforceInsecureNavigationsSetUnsorted) {
+  contents()->NavigateAndCommit(GURL("http://a.com/"));
+
+  EXPECT_EQ(0, process()->bad_msg_count());
+  static_cast<blink::mojom::LocalFrameHost*>(main_test_rfh())
+      ->EnforceInsecureNavigationsSet({3, 1, 2});
+  EXPECT_EQ(1, process()->bad_msg_count());
+  EXPECT_TRUE(main_test_rfh()
+                  ->browsing_context_state()
+                  ->current_replication_state()
+                  .insecure_navigations_set.empty());
+}
+
+TEST_F(RenderFrameHostImplTest, EnforceInsecureNavigationsSetSorted) {
+  contents()->NavigateAndCommit(GURL("http://a.com/"));
+
+  EXPECT_EQ(0, process()->bad_msg_count());
+  static_cast<blink::mojom::LocalFrameHost*>(main_test_rfh())
+      ->EnforceInsecureNavigationsSet({1, 2, 3});
+  EXPECT_EQ(0, process()->bad_msg_count());
+  EXPECT_EQ(std::vector<uint32_t>({1, 2, 3}), main_test_rfh()
+                                                  ->browsing_context_state()
+                                                  ->current_replication_state()
+                                                  .insecure_navigations_set);
+}
+
 class RenderFrameHostImplCookieChangeListenerTest
     : public RenderFrameHostImplTest,
       public testing::WithParamInterface<bool> {

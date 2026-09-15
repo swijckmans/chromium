@@ -8628,6 +8628,11 @@ void RenderFrameHostImpl::EnforceInsecureNavigationsSet(
                     kRfhEnforceInsecureNavigationsSet)) {
     return;
   }
+  if (!std::is_sorted(set.begin(), set.end())) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_INSECURE_NAVIGATIONS_SET_UNSORTED);
+    return;
+  }
   browsing_context_state_->SetInsecureNavigationsSet(set);
 }
 
