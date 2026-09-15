@@ -276,6 +276,11 @@ class CorsURLLoaderTestBase : public testing::Test {
                                 /*new_url=*/std::nullopt);
   }
 
+  void FollowRedirect(const GURL& new_url) {
+    DCHECK(url_loader_);
+    url_loader_->FollowRedirect({}, new_url);
+  }
+
   void AddHostHeaderAndFollowRedirect() {
     DCHECK(url_loader_);
     network::HttpRequestHeadersUpdateParams headers_update_params;

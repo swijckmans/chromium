@@ -450,7 +450,11 @@ void CorsURLLoader::FollowRedirect(
 
   if (new_url && (new_url->DeprecatedGetOriginAsURL() !=
                   deferred_redirect_url_->DeprecatedGetOriginAsURL())) {
-    NOTREACHED() << "Can only change the URL within the same origin.";
+    mojo::ReportBadMessage(
+        "CorsURLLoader: FollowRedirect can only change the URL within the "
+        "same origin");
+    HandleComplete(URLLoaderCompletionStatus(net::ERR_FAILED));
+    return;
   }
 
   deferred_redirect_url_.reset();
