@@ -354,8 +354,8 @@ blink::mojom::DragDataPtr DropMetaDataToDragData(
 }
 
 DropData DragDataToDropData(const blink::mojom::DragData& drag_data) {
-  // This field is only used when dragging into Blink and is ignored here.
-
+  // `drag_data.file_system_id` is only meaningful when dragging into Blink
+  // and is ignored here.
   DropData result;
   if (drag_data.source_effect_allowed.has_value()) {
     result.source_effect_allowed = base::UTF8ToUTF16(
@@ -434,7 +434,6 @@ DropData DragDataToDropData(const blink::mojom::DragData& drag_data) {
       case blink::mojom::DragItemDataView::Tag::kFileSystemFile: {
         const blink::mojom::DragItemFileSystemFilePtr& file_system_file_item =
             item->get_file_system_file();
-
         DropData::FileSystemFileInfo info;
         info.url = file_system_file_item->url;
         info.size = file_system_file_item->size;
