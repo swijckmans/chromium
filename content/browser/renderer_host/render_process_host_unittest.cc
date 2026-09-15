@@ -35,6 +35,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/frame/frame_policy.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
+#include "third_party/blink/public/mojom/dom_storage/dom_storage.mojom.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom.h"
 #include "ui/webui/untrusted_web_ui_browsertest_util.h"
 
@@ -85,6 +86,12 @@ class ScopedNProcLimitForTest {
 
 class RenderProcessHostUnitTest : public RenderViewHostImplTestHarness {
  public:
+  void CreateDomStorageProvider(
+      RenderProcessHostImpl* host,
+      mojo::PendingReceiver<blink::mojom::DomStorageProvider> receiver) {
+    host->CreateDomStorageProvider(std::move(receiver));
+  }
+
   scoped_refptr<SiteInstanceImpl> CreateForUrl(const GURL& url) {
     return SiteInstanceImpl::CreateForTesting(browser_context(), url);
   }
@@ -117,6 +124,35 @@ TEST_F(RenderProcessHostUnitTest, GuestsAreNotSuitableHosts) {
       site_instance->GetSiteInfo()));
   EXPECT_EQ(process(),
             RenderProcessHostImpl::GetExistingProcessHost(site_instance.get()));
+}
+
+TEST_F(RenderProcessHostUnitTest, DomStorageProviderRebindIsBadMessage) {
+  scoped_refptr<SiteInstanceImpl> site_instance =
+      CreateForUrl(GURL("http://foo.com"));
+  RenderProcessHostFactory* factory =
+      RenderProcessHostImpl::get_render_process_host_factory_for_testing();
+  RenderProcessHostImpl::set_render_process_host_factory_for_testing(nullptr);
+  auto* host = static_cast<RenderProcessHostImpl*>(
+      RenderProcessHostImpl::CreateRenderProcessHostForTesting(
+          browser_context(), site_instance.get()));
+  RenderProcessHostImpl::set_render_process_host_factory_for_testing(factory);
+
+  host->AddPendingView();
+  base::HistogramTester histograms;
+  mojo::Remote<blink::mojom::DomStorageProvider> first_provider;
+  CreateDomStorageProvider(host, first_provider.BindNewPipeAndPassReceiver());
+  ASSERT_TRUE(first_provider.is_bound());
+
+  mojo::Remote<blink::mojom::DomStorageProvider> second_provider;
+  CreateDomStorageProvider(host, second_provider.BindNewPipeAndPassReceiver());
+
+  histograms.ExpectUniqueSample(
+      "Stability.BadMessageTerminated.Content",
+      bad_message::RPH_DOM_STORAGE_PROVIDER_ALREADY_BOUND, 1);
+
+  host->RemovePendingView();
+  host->Cleanup();
+  base::RunLoop().RunUntilIdle();
 }
 
 // Test that an overridden process limit takes effect on all platforms.

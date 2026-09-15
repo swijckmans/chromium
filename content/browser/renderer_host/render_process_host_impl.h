@@ -950,6 +950,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
   int32_t pending_views_ = 0;
 
  private:
+  friend class RenderProcessHostUnitTest;
   friend class ChildProcessLauncherBrowserTest_ChildSpawnFail_Test;
   friend class RenderFrameHostImplSubframeReuseBrowserTest_MultipleDelays_Test;
   friend class VisitRelayingRenderProcessHost;

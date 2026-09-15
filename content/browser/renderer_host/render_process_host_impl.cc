@@ -2809,7 +2809,11 @@ void RenderProcessHostImpl::BindCompositingModeReporter(
 
 void RenderProcessHostImpl::CreateDomStorageProvider(
     mojo::PendingReceiver<blink::mojom::DomStorageProvider> receiver) {
-  CHECK(!dom_storage_provider_receiver_.is_bound(), base::NotFatalUntil::M152);
+  if (dom_storage_provider_receiver_.is_bound()) {
+    bad_message::ReceivedBadMessage(
+        this, bad_message::RPH_DOM_STORAGE_PROVIDER_ALREADY_BOUND);
+    return;
+  }
   dom_storage_provider_receiver_.Bind(std::move(receiver));
 }
 
