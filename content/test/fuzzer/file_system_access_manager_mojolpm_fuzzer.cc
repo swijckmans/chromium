@@ -28,7 +28,7 @@
 #include "content/test/fuzzer/file_system_access_manager_mojolpm_fuzzer.pb.h"
 #include "content/test/fuzzer/mojolpm_fuzzer_support.h"
 #include "content/test/test_web_contents.h"
-#include "components/services/storage/public/mojom/file_system_access_context.mojom.h"
+#include "components/services/storage/public/mojom/file_system_access_context.mojom.h"  // nogncheck
 #include "mojo/public/tools/fuzzers/mojolpm.h"
 #include "storage/browser/file_system/file_system_context.h"
 #include "storage/browser/quota/quota_manager_proxy.h"
@@ -93,8 +93,6 @@ class FileSystemAccessManagerTestcase
                  base::OnceClosure done_closure) override;
 
  private:
-  static bool HasSafeStrings(const google::protobuf::Message& message);
-
   void SetUpOnIOThread(base::OnceClosure done_closure);
   void SetUpOnUIThread(base::OnceClosure done_closure);
   void SetUpOnFuzzerThread(base::OnceClosure done_closure);
@@ -149,44 +147,6 @@ FileSystemAccessManagerTestcase::FileSystemAccessManagerTestcase(
     const ProtoTestcase& testcase)
     : Testcase<ProtoTestcase, ProtoAction>(testcase) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
-}
-
-bool FileSystemAccessManagerTestcase::HasSafeStrings(
-    const google::protobuf::Message& message) {
-  const google::protobuf::Reflection* reflection = message.GetReflection();
-  const google::protobuf::Descriptor* descriptor = message.GetDescriptor();
-  for (int i = 0; i < descriptor->field_count(); ++i) {
-    const google::protobuf::FieldDescriptor* field = descriptor->field(i);
-    if (field->is_repeated()) {
-      int size = reflection->FieldSize(message, field);
-      for (int j = 0; j < size; ++j) {
-        if (field->cpp_type() ==
-            google::protobuf::FieldDescriptor::CPPTYPE_STRING) {
-          if (!base::IsStringASCII(
-                  reflection->GetRepeatedString(message, field, j))) {
-            return false;
-          }
-        } else if (field->cpp_type() ==
-                   google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
-                   !HasSafeStrings(
-                       reflection->GetRepeatedMessage(message, field, j))) {
-          return false;
-        }
-      }
-    } else if (reflection->HasField(message, field)) {
-      if (field->cpp_type() ==
-          google::protobuf::FieldDescriptor::CPPTYPE_STRING) {
-        if (!base::IsStringASCII(reflection->GetString(message, field))) {
-          return false;
-        }
-      } else if (field->cpp_type() ==
-                     google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
-                 !HasSafeStrings(reflection->GetMessage(message, field))) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 void FileSystemAccessManagerTestcase::SetUp(base::OnceClosure done_closure) {
@@ -361,6 +321,7 @@ void FileSystemAccessManagerTestcase::DeserializeHandle(
     return;
   }
   if (action.bits().empty()) {
+    // FileSystemAccessContext is browser-internal, so this is harness-only.
     return;
   }
   mojo::Remote<blink::mojom::FileSystemAccessTransferToken> token;
@@ -376,11 +337,6 @@ void FileSystemAccessManagerTestcase::RunAction(
     const ProtoAction& action,
     base::OnceClosure done_closure) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (!HasSafeStrings(action)) {
-    std::move(done_closure).Run();
-    return;
-  }
 
   switch (action.action_case()) {
     case ProtoAction::kRunUntilIdle:
