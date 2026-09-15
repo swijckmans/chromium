@@ -2512,6 +2512,31 @@ TEST_F(RenderWidgetHostDragTest, NonFileUrlSpecifiesDownloadUrlWithFileUrl) {
   EXPECT_FALSE(drop_data().download_metadata.has_value());
 }
 
+TEST_F(RenderWidgetHostDragTest, RendererSuppliedFileSystemIdsAreIgnored) {
+  auto drag_data = blink::mojom::DragData::New();
+  drag_data->file_system_id = "renderer-chosen";
+
+  drag_data->items.push_back(blink::mojom::DragItem::NewFileSystemFile(
+      blink::mojom::DragItemFileSystemFile::New(
+          GURL("filesystem:http://example.com/temporary/x"), 1,
+          "renderer-chosen", nullptr)));
+
+  blink::mojom::DragItemStringPtr text_item =
+      blink::mojom::DragItemString::New();
+  text_item->string_type = ui::kMimeTypePlainText;
+  text_item->string_data = u"renderer text";
+  drag_data->items.push_back(
+      blink::mojom::DragItem::NewString(std::move(text_item)));
+
+  int bad_msg_count = main_test_rfh()->GetProcess()->bad_msg_count();
+  StartDragWithDragData(std::move(drag_data));
+
+  EXPECT_EQ(start_dragging_count(), 1);
+  EXPECT_TRUE(drop_data().file_system_files.empty());
+  EXPECT_EQ(drop_data().text, u"renderer text");
+  EXPECT_EQ(main_test_rfh()->GetProcess()->bad_msg_count(), bad_msg_count);
+}
+
 // TODO(crbug.com/497882858): Add more tests that other fields in
 // `content::DropData` are filtered.
 

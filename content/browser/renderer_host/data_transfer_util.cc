@@ -354,9 +354,8 @@ blink::mojom::DragDataPtr DropMetaDataToDragData(
 }
 
 DropData DragDataToDropData(const blink::mojom::DragData& drag_data) {
-  // This field should be empty when dragging from the renderer.
-  CHECK(!drag_data.file_system_id, base::NotFatalUntil::M152);
-
+  // `drag_data.file_system_id` is only meaningful when dragging into Blink
+  // and is ignored here.
   DropData result;
   if (drag_data.source_effect_allowed.has_value()) {
     result.source_effect_allowed = base::UTF8ToUTF16(
@@ -435,10 +434,6 @@ DropData DragDataToDropData(const blink::mojom::DragData& drag_data) {
       case blink::mojom::DragItemDataView::Tag::kFileSystemFile: {
         const blink::mojom::DragItemFileSystemFilePtr& file_system_file_item =
             item->get_file_system_file();
-        // This field should be empty when dragging from the renderer.
-        CHECK(!file_system_file_item->file_system_id,
-              base::NotFatalUntil::M152);
-
         DropData::FileSystemFileInfo info;
         info.url = file_system_file_item->url;
         info.size = file_system_file_item->size;
