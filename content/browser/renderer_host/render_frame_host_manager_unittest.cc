@@ -4031,6 +4031,43 @@ TEST_P(RenderFrameHostManagerTest,
   EXPECT_FALSE(main_test_rfh()->frame_tree_node()->navigation_request());
 }
 
+TEST_P(RenderFrameHostManagerTest, OpenURLWithInvalidDispositionIsBadMessage) {
+  const GURL kMainURL("http://a.com/");
+  const GURL kChildURL("http://b.com/");
+  const GURL kTargetURL("http://a.com/other");
+
+  contents()->NavigateAndCommit(kMainURL);
+  FrameTreeNode* root = contents()->GetPrimaryFrameTree().root();
+  TestRenderFrameHost* child_host = main_test_rfh()->AppendChild("child");
+  child_host = static_cast<TestRenderFrameHost*>(
+      NavigationSimulator::NavigateAndCommitFromDocument(kChildURL,
+                                                         child_host));
+
+  RenderFrameProxyHost* proxy =
+      root->current_frame_host()
+          ->browsing_context_state()
+          ->GetRenderFrameProxyHost(child_host->GetSiteInstance()->group());
+  ASSERT_TRUE(proxy);
+  ASSERT_EQ(proxy->GetProcess(), child_host->GetProcess());
+
+  auto params = blink::mojom::OpenURLParams::New();
+  params->url = kTargetURL;
+  params->initiator_origin = child_host->GetLastCommittedOrigin();
+  params->initiator_state_token = child_host->current_initiator_state_token();
+  params->initiator_document_token = child_host->GetDocumentToken();
+  params->initiator_frame_token = child_host->GetFrameToken();
+  params->referrer = blink::mojom::Referrer::New();
+  params->disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params->user_gesture = true;
+
+  EXPECT_EQ(0, child_host->GetProcess()->bad_msg_count());
+  static_cast<blink::mojom::RemoteFrameHost*>(proxy)->OpenURL(
+      std::move(params));
+  EXPECT_EQ(1, child_host->GetProcess()->bad_msg_count());
+  EXPECT_FALSE(root->navigation_request());
+  EXPECT_EQ(kMainURL, root->current_frame_host()->GetLastCommittedURL());
+}
+
 // Regression test for a crash where a stale RenderViewHost remained in the
 // FrameTree map after its root proxy was cleaned up, leading to a CHECK
 // failure in IsRenderFrameLive() during subsequent subframe creation.
