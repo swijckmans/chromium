@@ -1,0 +1,38 @@
+actions {
+  file_system_access_manager_remote_action {
+    id: 0
+    m_get_sandboxed_file_system {
+    }
+  }
+}
+actions {
+  file_system_access_directory_handle_remote_action {
+    id: 1
+    m_transfer {
+      m_token: 2
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  file_system_access_manager_remote_action {
+    id: 0
+    m_get_directory_handle_from_token {
+      m_token: 2
+      m_directory_handle: 3
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+  action_indexes: 3
+  action_indexes: 4
+}
+sequence_indexes: 0
