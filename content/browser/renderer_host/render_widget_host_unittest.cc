@@ -24,11 +24,13 @@
 #include "cc/mojom/render_frame_metadata.mojom.h"
 #include "cc/trees/render_frame_metadata.h"
 #include "components/input/input_constants.h"
+#include "components/input/render_widget_host_input_event_router.h"
 #include "components/input/switches.h"
 #include "components/viz/common/surfaces/local_surface_id.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "components/viz/test/begin_frame_args_test.h"
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"
+#include "content/browser/compositor/surface_utils.h"
 #include "content/browser/gpu/compositor_util.h"
 #include "content/browser/renderer_host/data_transfer_util.h"
 #include "content/browser/renderer_host/display_feature.h"
@@ -374,7 +376,9 @@ class MockInputEventObserver : public RenderWidgetHost::InputEventObserver {
 
 // MockRenderWidgetHostDelegate --------------------------------------------
 
-class MockRenderWidgetHostDelegate : public RenderWidgetHostDelegate {
+class MockRenderWidgetHostDelegate
+    : public RenderWidgetHostDelegate,
+      public input::RenderWidgetHostInputEventRouter::Delegate {
  public:
   MockRenderWidgetHostDelegate()
       : prehandle_keyboard_event_(false),
@@ -464,6 +468,22 @@ class MockRenderWidgetHostDelegate : public RenderWidgetHostDelegate {
   void SetIgnoreInputEvents(bool ignore_input_events) {
     ignore_input_events_ = ignore_input_events;
   }
+
+  void CreateInputEventRouter() {
+    input_event_router_ =
+        base::MakeRefCounted<input::RenderWidgetHostInputEventRouter>(
+            GetHostFrameSinkManager(), this);
+  }
+
+  input::RenderWidgetHostInputEventRouter* GetInputEventRouter() override {
+    return input_event_router_.get();
+  }
+
+  input::TouchEmulator* GetTouchEmulator(bool create_if_necessary) override {
+    return nullptr;
+  }
+
+  void CancelAutoscroll(input::RenderWidgetHostViewInput* view) override {}
 
   bool IsFullscreen() override { return is_fullscreen_; }
 
@@ -555,6 +575,7 @@ class MockRenderWidgetHostDelegate : public RenderWidgetHostDelegate {
   bool is_fullscreen_ = false;
 
   VisibleTimeRequestTrigger visible_time_request_trigger_;
+  scoped_refptr<input::RenderWidgetHostInputEventRouter> input_event_router_;
 };
 
 class MockRenderWidgetHostOwnerDelegate
@@ -1123,6 +1144,38 @@ TEST_F(RenderWidgetHostTest, SynchronizeVisualProperties) {
             host_->old_visual_properties_->new_size_device_px);
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(1u, widget_.ReceivedVisualProperties().size());
+}
+
+TEST_F(RenderWidgetHostTest, AutoscrollFlingWithoutStartIsIgnored) {
+  delegate_->CreateInputEventRouter();
+  host_->mock_render_input_router()->GetAndResetDispatchedMessages();
+  int bad_msg_count = process_->bad_msg_count();
+
+  static_cast<blink::mojom::FrameWidgetHost*>(host_.get())
+      ->AutoscrollFling(gfx::Vector2dF(10, 10));
+  host_->AutoscrollEnd();
+
+  EXPECT_TRUE(host_->mock_render_input_router()
+                  ->GetAndResetDispatchedMessages()
+                  .empty());
+  EXPECT_EQ(bad_msg_count, process_->bad_msg_count());
+}
+
+TEST_F(RenderWidgetHostTest, EmptyViewportSizeInRenderFrameMetadataIsIgnored) {
+  host_->visual_properties_ack_pending_ = true;
+
+  cc::RenderFrameMetadata metadata;
+  metadata.local_surface_id =
+      viz::LocalSurfaceId(1, base::UnguessableToken::Create());
+  static_cast<RenderFrameMetadataProvider::Observer&>(*host_)
+      .OnLocalSurfaceIdChanged(metadata);
+
+  EXPECT_TRUE(host_->visual_properties_ack_pending_);
+
+  metadata.viewport_size_in_pixels = gfx::Size(100, 100);
+  static_cast<RenderFrameMetadataProvider::Observer&>(*host_)
+      .OnLocalSurfaceIdChanged(metadata);
+  EXPECT_FALSE(host_->visual_properties_ack_pending_);
 }
 
 // Test that a resize event is sent if SynchronizeVisualProperties() is called

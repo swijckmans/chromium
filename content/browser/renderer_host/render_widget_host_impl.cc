@@ -2999,8 +2999,9 @@ void RenderWidgetHostImpl::OnLocalSurfaceIdChanged(
       metadata.local_surface_id ? metadata.local_surface_id->ToString()
                                 : "null");
 
-  // Update our knowledge of the RenderWidget's size.
-  CHECK(!metadata.viewport_size_in_pixels.IsEmpty());
+  if (metadata.viewport_size_in_pixels.IsEmpty()) {
+    return;
+  }
 
   visual_properties_ack_pending_ = false;
 
@@ -3334,7 +3335,9 @@ void RenderWidgetHostImpl::AutoscrollFling(const gfx::Vector2dF& velocity) {
     return;
   }
 
-  CHECK(autoscroll_in_progress_);
+  if (!autoscroll_in_progress_) {
+    return;
+  }
   if (!sent_autoscroll_scroll_begin_ && velocity != gfx::Vector2dF()) {
     // Send a GSB event with valid delta hints.
     WebGestureEvent scroll_begin =
