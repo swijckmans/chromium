@@ -152,7 +152,7 @@ class CorsURLLoaderFactoryTest : public testing::Test {
     factory_owner_.reset();
   }
 
-  const CorsURLLoaderFactory* GetCorsURLLoaderFactory() const {
+  CorsURLLoaderFactory* GetCorsURLLoaderFactory() {
     return factory_owner_->GetCorsURLLoaderFactoryForTesting();
   }
 
@@ -530,6 +530,21 @@ TEST_F(CorsURLLoaderFactoryTest, UntrustedCorsPreflightRequestAreFailed) {
   CreateLoaderAndStart(request, mojom::kURLLoadOptionAsCorsPreflight);
   EXPECT_EQ("CorsURLLoaderFactory: kURLLoadOptionAsCorsPreflight is set",
             bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(CorsURLLoaderFactoryTest,
+       ReadAndDiscardBodyAndSniffMimeTypeOptionsAreBadMessage) {
+  ResourceRequest request;
+  request.url = test_server()->GetURL("/echoall");
+  request.request_initiator = url::Origin::Create(request.url);
+  mojo::test::BadMessageObserver bad_message_observer;
+  CreateLoaderAndStart(request, mojom::kURLLoadOptionReadAndDiscardBody |
+                                    mojom::kURLLoadOptionSniffMimeType);
+  EXPECT_EQ(
+      "CorsURLLoaderFactory: kURLLoadOptionReadAndDiscardBody and "
+      "kURLLoadOptionSniffMimeType are mutually exclusive",
+      bad_message_observer.WaitForBadMessage());
+  EXPECT_TRUE(GetCorsURLLoaderFactory()->url_loaders().empty());
 }
 
 class NetworkBoundCorsURLLoaderFactoryTest : public CorsURLLoaderFactoryTest {
