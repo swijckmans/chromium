@@ -1,0 +1,73 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Message format for the MojoLPM fuzzer for the FileSystemAccess interfaces.
+
+syntax = "proto2";
+
+package content.fuzzing.file_system_access_manager.proto;
+
+import "third_party/blink/public/mojom/file_system_access/file_system_access_access_handle_host.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_data_transfer_token.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_directory_handle.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_file_handle.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_file_writer.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_manager.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_observer.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_observer_host.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_transfer_token.mojom.mojolpm.proto";
+
+message SerializeHandleAction {
+  required uint32 context_id = 1;
+  required uint32 token_id = 2;
+  required uint32 bits_id = 3;
+}
+
+message DeserializeHandleAction {
+  required uint32 context_id = 1;
+  required uint32 token_id = 2;
+  oneof bits_source {
+    bytes bits = 3;
+    uint32 bits_id = 4;
+  }
+}
+
+message RunUntilIdleAction {
+}
+
+message Action {
+  oneof action {
+    RunUntilIdleAction run_until_idle = 1;
+    mojolpm.blink.mojom.FileSystemAccessManager.RemoteAction
+        file_system_access_manager_remote_action = 2;
+    mojolpm.blink.mojom.FileSystemAccessDirectoryHandle.RemoteAction
+        file_system_access_directory_handle_remote_action = 3;
+    mojolpm.blink.mojom.FileSystemAccessFileHandle.RemoteAction
+        file_system_access_file_handle_remote_action = 4;
+    mojolpm.blink.mojom.FileSystemAccessFileWriter.RemoteAction
+        file_system_access_file_writer_remote_action = 5;
+    mojolpm.blink.mojom.FileSystemAccessAccessHandleHost.RemoteAction
+        file_system_access_access_handle_host_remote_action = 6;
+    mojolpm.blink.mojom.FileSystemAccessTransferToken.RemoteAction
+        file_system_access_transfer_token_remote_action = 7;
+    mojolpm.blink.mojom.FileSystemAccessDataTransferToken.RemoteAction
+        file_system_access_data_transfer_token_remote_action = 8;
+    mojolpm.blink.mojom.FileSystemAccessObserverHost.RemoteAction
+        file_system_access_observer_host_remote_action = 9;
+    mojolpm.blink.mojom.FileSystemAccessObserver.RemoteAction
+        file_system_access_observer_remote_action = 10;
+    SerializeHandleAction serialize_handle = 11;
+    DeserializeHandleAction deserialize_handle = 12;
+  }
+}
+
+message Sequence {
+  repeated uint32 action_indexes = 1 [packed = true];
+}
+
+message Testcase {
+  repeated Action actions = 1;
+  repeated Sequence sequences = 2;
+  repeated uint32 sequence_indexes = 3 [packed = true];
+}

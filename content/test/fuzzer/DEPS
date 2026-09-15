@@ -8,4 +8,7 @@ specific_include_rules = {
   "dom_storage_mojolpm_fuzzer.cc": [
     "+components/services/storage/public/mojom",
   ],
+  "file_system_access_manager_mojolpm_fuzzer.cc": [
+    "+components/services/storage/public/mojom",
+  ],
 }

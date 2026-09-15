@@ -1,0 +1,45 @@
+actions {
+  file_system_access_manager_remote_action {
+    id: 0
+    m_get_sandboxed_file_system {
+    }
+  }
+}
+actions {
+  file_system_access_directory_handle_remote_action {
+    id: 1
+    m_get_file {
+      m_basename: "writer.txt"
+      m_create: true
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  file_system_access_file_handle_remote_action {
+    id: 2
+    m_create_file_writer {
+      m_keep_existing_data: true
+      m_auto_close: false
+      m_mode: MojoLPM_FileSystemAccessWritableFileStreamLockMode_kExclusive
+    }
+  }
+}
+actions {
+  file_system_access_file_writer_remote_action {
+    id: 3
+    m_truncate {
+      m_length: 0
+    }
+  }
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+  action_indexes: 3
+  action_indexes: 4
+}
+sequence_indexes: 0
