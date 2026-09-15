@@ -1028,15 +1028,18 @@ void RenderFrameProxyHost::AdvanceFocus(
   // one of its child frames finishes its traversal.
   RenderFrameHostImpl* source_rfh = RenderFrameHostImpl::FromFrameToken(
       GetProcess()->GetID(), source_frame_token);
+  if (!source_rfh) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFPH_ADVANCE_FOCUS_INVALID_SOURCE_FRAME);
+    return;
+  }
   RenderFrameHostImpl* target_rfh = frame_tree_node_->current_frame_host();
   RenderFrameProxyHost* source_proxy =
-      source_rfh
-          ? source_rfh->browsing_context_state()->GetRenderFrameProxyHost(
-                target_rfh->GetSiteInstance()->group())
-          : nullptr;
+      source_rfh->browsing_context_state()->GetRenderFrameProxyHost(
+          target_rfh->GetSiteInstance()->group());
 
-  if (source_rfh && (source_rfh->HasTransientUserActivation() ||
-                     source_rfh->FocusSourceHasTransientUserActivation())) {
+  if (source_rfh->HasTransientUserActivation() ||
+      source_rfh->FocusSourceHasTransientUserActivation()) {
     target_rfh->ActivateFocusSourceUserActivation();
     source_rfh->DeactivateFocusSourceUserActivation();
   }

@@ -4115,6 +4115,63 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
   EXPECT_FALSE(contents()->GetPrimaryFrameTree().GetRenderViewHost(group_b));
 }
 
+TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
+       AdvanceFocusUnknownSourceIsBadMessage) {
+  const GURL kUrlA("http://a.com/");
+  const GURL kUrlB("http://www.google.com/");
+
+  contents()->NavigateAndCommit(kUrlA);
+  TestRenderFrameHost* main_rfh = contents()->GetPrimaryMainFrame();
+  TestRenderFrameHost* child_rfh = main_rfh->AppendChild("child_frame");
+  child_rfh = static_cast<TestRenderFrameHost*>(
+      NavigationSimulator::NavigateAndCommitFromDocument(kUrlB, child_rfh));
+  ASSERT_NE(child_rfh->GetProcess(), main_rfh->GetProcess());
+  RenderFrameProxyHost* proxy_to_parent =
+      child_rfh->browsing_context_state()->GetRenderFrameProxyHost(
+          main_rfh->GetSiteInstance()->group());
+  ASSERT_TRUE(proxy_to_parent);
+  ASSERT_EQ(proxy_to_parent->GetProcess(), main_rfh->GetProcess());
+
+  child_rfh->GetProcess()->SimulateCrash();
+  ASSERT_FALSE(child_rfh->IsRenderFrameLive());
+  auto* proxy_process =
+      static_cast<MockRenderProcessHost*>(proxy_to_parent->GetProcess());
+  int expected_bad_message_count = proxy_process->bad_msg_count() + 1;
+
+  static_cast<blink::mojom::RemoteFrameHost*>(proxy_to_parent)
+      ->AdvanceFocus(blink::mojom::FocusType::kForward,
+                     blink::LocalFrameToken());
+
+  EXPECT_EQ(expected_bad_message_count, proxy_process->bad_msg_count());
+}
+
+TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
+       AdvanceFocusValidSourceNotBadMessage) {
+  const GURL kUrlA("http://a.com/");
+  const GURL kUrlB("http://www.google.com/");
+
+  contents()->NavigateAndCommit(kUrlA);
+  TestRenderFrameHost* main_rfh = contents()->GetPrimaryMainFrame();
+  TestRenderFrameHost* child_rfh = main_rfh->AppendChild("child_frame");
+  child_rfh = static_cast<TestRenderFrameHost*>(
+      NavigationSimulator::NavigateAndCommitFromDocument(kUrlB, child_rfh));
+  ASSERT_NE(child_rfh->GetProcess(), main_rfh->GetProcess());
+  RenderFrameProxyHost* proxy_to_parent =
+      child_rfh->browsing_context_state()->GetRenderFrameProxyHost(
+          main_rfh->GetSiteInstance()->group());
+  ASSERT_TRUE(proxy_to_parent);
+  ASSERT_EQ(proxy_to_parent->GetProcess(), main_rfh->GetProcess());
+
+  auto* proxy_process =
+      static_cast<MockRenderProcessHost*>(proxy_to_parent->GetProcess());
+  int expected_bad_message_count = proxy_process->bad_msg_count();
+  static_cast<blink::mojom::RemoteFrameHost*>(proxy_to_parent)
+      ->AdvanceFocus(blink::mojom::FocusType::kForward,
+                     main_rfh->GetFrameToken());
+
+  EXPECT_EQ(expected_bad_message_count, proxy_process->bad_msg_count());
+}
+
 // Run tests with BackForwardCache.
 class RenderFrameHostManagerTestWithBackForwardCache
     : public RenderFrameHostManagerTest,
