@@ -567,6 +567,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="384"
       label="RFH_COMMIT_NAVIGATION_BROWSER_INITIATED_TRANSITION_MISMATCH"/>
   <int value="385" label="RFH_ISSUE_KEEP_ALIVE_HANDLE_INVALID_INITIATOR_TOKEN"/>
+  <int value="386" label="RFH_INSECURE_NAVIGATIONS_SET_UNSORTED"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions">
