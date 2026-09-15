@@ -15,8 +15,8 @@ message RunUntilIdleAction {}
 message Action {
   oneof action {
     RunUntilIdleAction run_until_idle = 1;
-    mojolpm.blink.mojom.CacheStorage.RemoteAction
-        cache_storage_remote_action = 2;
+    mojolpm.blink.mojom.CacheStorage.RemoteAction cache_storage_remote_action =
+        2;
     mojolpm.blink.mojom.CacheStorageCache.AssociatedRemoteAction
         cache_storage_cache_remote_action = 3;
   }
