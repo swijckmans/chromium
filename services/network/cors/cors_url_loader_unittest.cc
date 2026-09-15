@@ -3252,6 +3252,31 @@ TEST_F(CorsURLLoaderTest, NonBrowserNavigationRedirect) {
                           "should not call FollowRedirect"));
 }
 
+TEST_F(CorsURLLoaderTest, CrossOriginNewURLOnFollowRedirectIsBadMessage) {
+  BadMessageTestHelper bad_message_helper;
+
+  const GURL origin("https://example.com");
+  const GURL url("https://example.com/foo.png");
+  const GURL redirect_url("https://example.com/bar.png");
+  const GURL new_url("https://other.example.com/bar.png");
+
+  CreateLoaderAndStart(origin, url, mojom::RequestMode::kCors);
+  RunUntilCreateLoaderAndStartCalled();
+  NotifyLoaderClientOnReceiveRedirect(
+      CreateRedirectInfo(301, "GET", redirect_url));
+  RunUntilRedirectReceived();
+
+  ClearHasReceivedRedirect();
+  FollowRedirect(new_url);
+  RunUntilComplete();
+
+  EXPECT_EQ(net::ERR_FAILED, client().completion_status().error_code);
+  EXPECT_THAT(
+      bad_message_helper.bad_message_reports(),
+      ElementsAre("CorsURLLoader: FollowRedirect can only change the URL "
+                  "within the same origin"));
+}
+
 // Test that in manual redirect mode with empty destination (i.e., fetch()),
 // non-HTTP(S) redirect URLs are censored to "data:," for security.
 TEST_F(CorsURLLoaderTest, ManualRedirectCensorsUnsafeSchemes) {
