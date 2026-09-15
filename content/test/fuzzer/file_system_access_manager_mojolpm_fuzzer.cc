@@ -14,10 +14,12 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/ref_counted.h"
 #include "base/no_destructor.h"
 #include "base/run_loop.h"
 #include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner.h"
+#include "components/services/storage/public/mojom/file_system_access_context.mojom.h"  // nogncheck
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"  // nogncheck
 #include "content/browser/file_system_access/file_system_access.pb.h"  // nogncheck
 #include "content/browser/file_system_access/file_system_access_manager_impl.h"  // nogncheck
@@ -30,7 +32,6 @@
 #include "content/test/fuzzer/file_system_access_manager_mojolpm_fuzzer.pb.h"
 #include "content/test/fuzzer/mojolpm_fuzzer_support.h"
 #include "content/test/test_web_contents.h"
-#include "components/services/storage/public/mojom/file_system_access_context.mojom.h"  // nogncheck
 #include "mojo/public/tools/fuzzers/mojolpm.h"
 #include "storage/browser/file_system/file_system_context.h"
 #include "storage/browser/quota/quota_manager_proxy.h"
@@ -86,6 +87,8 @@ class FileSystemAccessManagerTestcase
       content::fuzzing::file_system_access_manager::proto::Testcase;
   using ProtoAction =
       content::fuzzing::file_system_access_manager::proto::Action;
+  using SerializedHandleBits =
+      base::RefCountedData<std::map<uint32_t, std::vector<uint8_t>>>;
 
   explicit FileSystemAccessManagerTestcase(const ProtoTestcase& testcase);
 
@@ -143,9 +146,8 @@ class FileSystemAccessManagerTestcase
       manager_receiver_;
   mojo::PendingReceiver<storage::mojom::FileSystemAccessContext>
       context_receiver_;
-  std::shared_ptr<std::map<uint32_t, std::vector<uint8_t>>>
-      serialized_handle_bits_ =
-          std::make_shared<std::map<uint32_t, std::vector<uint8_t>>>();
+  scoped_refptr<SerializedHandleBits> serialized_handle_bits_ =
+      base::MakeRefCounted<SerializedHandleBits>();
 };
 
 FileSystemAccessManagerTestcase::FileSystemAccessManagerTestcase(
@@ -311,21 +313,20 @@ void FileSystemAccessManagerTestcase::SerializeHandle(
     return;
   }
   const uint32_t bits_id = action.bits_id();
-  auto serialized_handle_bits = serialized_handle_bits_;
+  scoped_refptr<SerializedHandleBits> serialized_handle_bits =
+      serialized_handle_bits_;
   context->get()->SerializeHandle(
       token->Unbind(),
       base::BindOnce(
           [](scoped_refptr<base::SequencedTaskRunner> fuzzer_task_runner,
-             std::shared_ptr<std::map<uint32_t, std::vector<uint8_t>>>
-                 serialized_bits,
+             scoped_refptr<SerializedHandleBits> serialized_bits,
              uint32_t bits_id, const std::vector<uint8_t>& bits) {
             fuzzer_task_runner->PostTask(
                 FROM_HERE,
                 base::BindOnce(
-                    [](std::shared_ptr<std::map<uint32_t, std::vector<uint8_t>>>
-                           serialized_bits,
+                    [](scoped_refptr<SerializedHandleBits> serialized_bits,
                        uint32_t bits_id, std::vector<uint8_t> bits) {
-                      (*serialized_bits)[bits_id] = std::move(bits);
+                      serialized_bits->data[bits_id] = std::move(bits);
                     },
                     std::move(serialized_bits), bits_id, bits));
           },
@@ -346,8 +347,8 @@ void FileSystemAccessManagerTestcase::DeserializeHandle(
   if (action.has_bits()) {
     bits.assign(action.bits().begin(), action.bits().end());
   } else if (action.has_bits_id()) {
-    auto it = serialized_handle_bits_->find(action.bits_id());
-    if (it == serialized_handle_bits_->end()) {
+    auto it = serialized_handle_bits_->data.find(action.bits_id());
+    if (it == serialized_handle_bits_->data.end()) {
       return;
     }
     bits = it->second;
