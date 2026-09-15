@@ -234,6 +234,17 @@ TEST_F(RenderFrameHostImplTest, InvalidURL) {
   EXPECT_EQ(GURL(url::kAboutBlankURL), main_rfh()->GetLastCommittedURL());
 }
 
+TEST_F(RenderFrameHostImplTest, BeginNavigationWithNullNavigationClient) {
+  const GURL url("http://a.com");
+  NavigateAndCommit(url);
+
+  EXPECT_EQ(0, process()->bad_msg_count());
+  main_test_rfh()
+      ->SendRendererInitiatedNavigationRequestWithNullNavigationClient(url);
+  EXPECT_EQ(1, process()->bad_msg_count());
+  EXPECT_EQ(nullptr, main_test_rfh()->frame_tree_node()->navigation_request());
+}
+
 TEST_F(RenderFrameHostImplTest, DefaultToMainFrameWhenNoSubframeFocused) {
   NavigateAndCommit(GURL("https://test.example.com"));
 

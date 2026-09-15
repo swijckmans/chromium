@@ -11728,7 +11728,12 @@ void RenderFrameHostImpl::BeginNavigation(
     return;
   }
 
-  CHECK(navigation_client.is_valid());
+  if (!navigation_client.is_valid()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFH_BEGIN_NAVIGATION_INVALID_NAVIGATION_CLIENT);
+    return;
+  }
 
   blink::mojom::CommonNavigationParamsPtr validated_common_params =
       unvalidated_common_params.Clone();

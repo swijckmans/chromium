@@ -528,6 +528,51 @@ void TestRenderFrameHost::SendRendererInitiatedNavigationRequest(
                   mojo::NullReceiver(), mojo::NullReceiver());
 }
 
+void TestRenderFrameHost::
+    SendRendererInitiatedNavigationRequestWithNullNavigationClient(
+        const GURL& url) {
+  InitializeRenderFrameIfNeeded();
+
+  blink::mojom::BeginNavigationParamsPtr begin_params =
+      blink::mojom::BeginNavigationParams::New(
+          std::nullopt /* initiator_frame_token */,
+          current_initiator_state_token(), GetDocumentToken(),
+          std::string() /* headers */, net::LOAD_NORMAL,
+          false /* skip_service_worker */,
+          blink::mojom::RequestContextType::HYPERLINK,
+          blink::mojom::MixedContentContextType::kBlockable,
+          false /* is_form_submission */,
+          false /* was_initiated_by_link_click */,
+          blink::mojom::ForceHistoryPush::kNo, GURL() /* searchable_form_url */,
+          std::string() /* searchable_form_encoding */,
+          GURL() /* client_side_redirect_url */,
+          std::nullopt /* devtools_initiator_info */,
+          nullptr /* trust_token_params */,
+          base::TimeTicks() /* renderer_before_unload_start */,
+          base::TimeTicks() /* renderer_before_unload_end */,
+          base::TimeTicks() /* before_unload_dialog_opened */,
+          base::TimeTicks() /* before_unload_dialog_closed */,
+          false /* started_with_transient_activation */,
+          false /* started_by_ad */, false /* is_container_initiated */,
+          false /* has_rel_opener */,
+          std::nullopt /* script_tool_invocation_id */);
+  auto common_params = blink::CreateCommonNavigationParams();
+  common_params->url = url;
+  common_params->initiator_origin = GetLastCommittedOrigin();
+  common_params->referrer = blink::mojom::Referrer::New(
+      GURL(), network::mojom::ReferrerPolicy::kDefault);
+  common_params->transition = ui::PAGE_TRANSITION_LINK;
+  common_params->navigation_type =
+      blink::mojom::NavigationType::DIFFERENT_DOCUMENT;
+  common_params->request_destination =
+      network::mojom::RequestDestination::kDocument;
+
+  BeginNavigation(std::move(common_params), std::move(begin_params),
+                  mojo::NullRemote(), mojo::NullAssociatedRemote(),
+                  mojo::NullRemote(), mojo::NullReceiver(),
+                  mojo::NullReceiver(), mojo::NullReceiver());
+}
+
 void TestRenderFrameHost::SimulateDidChangeOpener(
     const std::optional<blink::LocalFrameToken>& opener_frame_token) {
   DidChangeOpener(opener_frame_token);
