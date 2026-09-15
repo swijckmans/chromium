@@ -94,6 +94,8 @@ class TestRenderFrameHost : public RenderFrameHostImpl,
 
   // Public overrides to expose RenderFrameHostImpl's mojo methods to tests.
   void DidFailLoadWithError(const GURL& url, int error_code) override;
+  void SendDidChangeName(const std::string& name,
+                         const std::string& unique_name);
 
   // RenderFrameHostTester implementation.
   void InitializeRenderFrameIfNeeded() override;

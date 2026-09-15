@@ -8598,9 +8598,10 @@ void RenderFrameHostImpl::DidChangeName(const std::string& name,
   if (IsInBackForwardCache() || IsPendingDeletion()) {
     return;
   }
-  if (GetParent() != nullptr) {
-    // TODO(lukasza): Call ReceivedBadMessage when |unique_name| is empty.
-    CHECK(!unique_name.empty());
+  if (GetParent() && unique_name.empty()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_DID_CHANGE_NAME_EMPTY_UNIQUE_NAME);
+    return;
   }
   TRACE_EVENT2("navigation", "RenderFrameHostImpl::OnDidChangeName",
                "render_frame_host", this, "name", name);

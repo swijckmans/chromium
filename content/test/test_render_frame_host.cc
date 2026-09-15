@@ -191,6 +191,11 @@ void TestRenderFrameHost::InitializeRenderFrameIfNeeded() {
   }
 }
 
+void TestRenderFrameHost::SendDidChangeName(const std::string& name,
+                                            const std::string& unique_name) {
+  DidChangeName(name, unique_name);
+}
+
 TestRenderFrameHost* TestRenderFrameHost::AppendChild(
     const std::string& frame_name) {
   return AppendChildWithPolicy(frame_name, {});

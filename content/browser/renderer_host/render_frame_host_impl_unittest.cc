@@ -1625,6 +1625,18 @@ TEST_F(RenderFrameHostImplTest,
   EXPECT_EQ(child_count, main_test_rfh()->frame_tree_node()->child_count());
 }
 
+TEST_F(RenderFrameHostImplTest, DidChangeNameWithEmptyUniqueNameIsBadMessage) {
+  NavigateAndCommit(GURL("http://a.com"));
+  TestRenderFrameHost* child = main_test_rfh()->AppendChild("child");
+  const std::string old_frame_name =
+      child->browsing_context_state()->frame_name();
+
+  EXPECT_EQ(0, child->GetProcess()->bad_msg_count());
+  child->SendDidChangeName("renamed", std::string());
+  EXPECT_EQ(1, child->GetProcess()->bad_msg_count());
+  EXPECT_EQ(old_frame_name, child->browsing_context_state()->frame_name());
+}
+
 class RenderFrameHostImplCookieChangeListenerTest
     : public RenderFrameHostImplTest,
       public testing::WithParamInterface<bool> {
