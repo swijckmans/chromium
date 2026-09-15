@@ -5,6 +5,7 @@
 #include "content/browser/webtransport/web_transport_connector_impl.h"
 
 #include "base/not_fatal_until.h"
+#include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
@@ -17,8 +18,11 @@
 #include "content/public/common/child_process_id_util.h"
 #include "content/public/common/content_client.h"
 #include "ipc/constants.mojom.h"
+#include "mojo/public/cpp/bindings/message.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
+#include "net/http/http_util.h"
+#include "services/network/public/cpp/header_util.h"
 
 namespace content {
 
@@ -196,6 +200,19 @@ void WebTransportConnectorImpl::Connect(
         handshake_client) {
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI),
         base::NotFatalUntil::M159);
+
+  for (const auto& [name, value] : additional_headers) {
+    if (!net::HttpUtil::IsValidHeaderName(name) ||
+        !net::HttpUtil::IsValidHeaderValue(value) ||
+        !network::IsRequestHeaderSafe(name, value) ||
+        base::EqualsCaseInsensitiveASCII(name, "origin") ||
+        base::EqualsCaseInsensitiveASCII(name, "wt-available-protocols") ||
+        base::StartsWith(name, "sec-", base::CompareCase::INSENSITIVE_ASCII)) {
+      mojo::ReportBadMessage(
+          "WebTransportConnector: forbidden or invalid additional header");
+      return;
+    }
+  }
 
   // For document-scoped contexts (e.g., RenderFrame or DedicatedWorker), abort
   // the connection if the original document is no longer active (including
