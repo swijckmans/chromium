@@ -425,22 +425,24 @@ void TextInputManager::ImeCompositionRangeChanged(
   CHECK(IsRegistered(view), base::NotFatalUntil::M153);
 
   if (character_bounds.has_value()) {
-    composition_range_info_map_[view].character_bounds.clear();
+    auto& composition_range_info = composition_range_info_map_[view];
+    composition_range_info.character_bounds.clear();
 
-    gfx::Rect viewport_rect = GetRootOrFallbackViewportRect(view);
-    // The values for the bounds should be converted to root view's coordinates
-    // before being stored.
-    for (auto& rect : character_bounds.value()) {
-      gfx::Rect clamped_rect = rect;
-      clamped_rect.set_origin(
-          view->TransformPointToRootCoordSpace(clamped_rect.origin()));
-      clamped_rect.AdjustToFit(viewport_rect);
-      composition_range_info_map_[view].character_bounds.emplace_back(
-          clamped_rect);
+    if (character_bounds->size() == static_cast<size_t>(range.length())) {
+      gfx::Rect viewport_rect = GetRootOrFallbackViewportRect(view);
+      // The values for the bounds should be converted to root view's
+      // coordinates before being stored.
+      for (auto& rect : character_bounds.value()) {
+        gfx::Rect clamped_rect = rect;
+        clamped_rect.set_origin(
+            view->TransformPointToRootCoordSpace(clamped_rect.origin()));
+        clamped_rect.AdjustToFit(viewport_rect);
+        composition_range_info.character_bounds.emplace_back(clamped_rect);
+      }
     }
 
-    composition_range_info_map_[view].range.set_start(range.start());
-    composition_range_info_map_[view].range.set_end(range.end());
+    composition_range_info.range.set_start(range.start());
+    composition_range_info.range.set_end(range.end());
   }
 
   for (auto& observer : observer_list_) {

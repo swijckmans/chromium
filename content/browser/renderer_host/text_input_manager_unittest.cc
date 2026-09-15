@@ -140,6 +140,35 @@ TEST_F(TextInputManagerTest, ImeCompositionRangeChanged_InBounds) {
   EXPECT_EQ(info->character_bounds[0], expected_bounds);
 }
 
+TEST_F(TextInputManagerTest, MismatchedCompositionCharacterBoundsAreDropped) {
+  RenderWidgetHostViewBase* view =
+      static_cast<RenderWidgetHostViewBase*>(rvh()->GetWidget()->GetView());
+
+  TextInputManager* manager = view->GetTextInputManager();
+  ASSERT_TRUE(manager);
+
+  ui::mojom::TextInputState state;
+  state.type = ui::TEXT_INPUT_TYPE_TEXT;
+  manager->UpdateTextInputState(view, state);
+
+  view->SetBounds(gfx::Rect(0, 0, 800, 600));
+
+  manager->ImeCompositionRangeChanged(view, gfx::Range(0, 3),
+                                      {{gfx::Rect(10, 10, 50, 50)}});
+
+  const TextInputManager::CompositionRangeInfo* info =
+      manager->GetCompositionRangeInfo();
+  ASSERT_TRUE(info);
+  EXPECT_TRUE(info->character_bounds.empty());
+  EXPECT_EQ(info->range, gfx::Range(0, 3));
+
+  manager->ImeCompositionRangeChanged(view, gfx::Range(0, 1),
+                                      {{gfx::Rect(10, 10, 50, 50)}});
+
+  EXPECT_EQ(info->character_bounds.size(), 1u);
+  EXPECT_EQ(info->range, gfx::Range(0, 1));
+}
+
 // Test that SelectionBoundsChanged clamps out-of-bounds selection bounds.
 TEST_F(TextInputManagerTest, SelectionBoundsChanged_Clamped) {
   RenderWidgetHostViewBase* view =
