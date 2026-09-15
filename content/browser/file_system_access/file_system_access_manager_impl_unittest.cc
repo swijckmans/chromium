@@ -611,6 +611,37 @@ TEST_F(FileSystemAccessManagerImplTest, GetSandboxedFileSystem_CreateBucket) {
                   ::testing::Field(&storage::BucketLocator::is_default, true)));
 }
 
+TEST_F(FileSystemAccessManagerImplTest,
+       GetSandboxedFileSystemForDevtools_InvalidUtf8Component) {
+  mojo::test::BadMessageObserver bad_message_observer;
+  manager_remote_->GetSandboxedFileSystemForDevtools({std::string("\xff", 1)},
+                                                     base::DoNothing());
+  EXPECT_EQ("Invalid path component", bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(FileSystemAccessManagerImplTest,
+       GetSandboxedFileSystemForDevtools_ParentComponent) {
+  mojo::test::BadMessageObserver bad_message_observer;
+  manager_remote_->GetSandboxedFileSystemForDevtools({"../x"},
+                                                     base::DoNothing());
+  EXPECT_EQ("Invalid path component", bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(FileSystemAccessManagerImplTest,
+       GetSandboxedFileSystemForDevtools_ValidUtf8Component) {
+  mojo::test::BadMessageObserver bad_message_observer;
+  base::test::TestFuture<
+      blink::mojom::FileSystemAccessErrorPtr,
+      mojo::PendingRemote<blink::mojom::FileSystemAccessDirectoryHandle>>
+      future;
+  manager_remote_->GetSandboxedFileSystemForDevtools({"é"},
+                                                     future.GetCallback());
+  auto result = future.Take();
+  EXPECT_EQ(std::get<0>(result)->status,
+            blink::mojom::FileSystemAccessStatus::kFileError);
+  EXPECT_FALSE(bad_message_observer.got_bad_message());
+}
+
 TEST_F(FileSystemAccessManagerImplTest, GetSandboxedFileSystem_CustomBucket) {
   mojo::PendingRemote<blink::mojom::FileSystemAccessDirectoryHandle>
       directory_remote;
