@@ -155,6 +155,8 @@ class TestRenderFrameHost : public RenderFrameHostImpl,
   // DEPRECATED: use NavigationSimulator instead.
   void SendRendererInitiatedNavigationRequest(const GURL& url,
                                               bool has_user_gesture);
+  void SendRendererInitiatedNavigationRequestWithNullNavigationClient(
+      const GURL& url);
 
   void SimulateDidChangeOpener(
       const std::optional<blink::LocalFrameToken>& opener_frame_token);
