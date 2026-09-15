@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner.h"
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"  // nogncheck
+#include "content/browser/file_system_access/file_system_access.pb.h"  // nogncheck
 #include "content/browser/file_system_access/file_system_access_manager_impl.h"  // nogncheck
 #include "content/browser/file_system_access/fixed_file_system_access_permission_grant.h"  // nogncheck
 #include "content/browser/file_system_access/mock_file_system_access_permission_context.h"  // nogncheck
@@ -141,6 +143,9 @@ class FileSystemAccessManagerTestcase
       manager_receiver_;
   mojo::PendingReceiver<storage::mojom::FileSystemAccessContext>
       context_receiver_;
+  std::shared_ptr<std::map<uint32_t, std::vector<uint8_t>>>
+      serialized_handle_bits_ =
+          std::make_shared<std::map<uint32_t, std::vector<uint8_t>>>();
 };
 
 FileSystemAccessManagerTestcase::FileSystemAccessManagerTestcase(
@@ -305,9 +310,26 @@ void FileSystemAccessManagerTestcase::SerializeHandle(
   if (!token || !context) {
     return;
   }
+  const uint32_t bits_id = action.bits_id();
+  auto serialized_handle_bits = serialized_handle_bits_;
   context->get()->SerializeHandle(
       token->Unbind(),
-      base::BindOnce([](const std::vector<uint8_t>&) {}));
+      base::BindOnce(
+          [](scoped_refptr<base::SequencedTaskRunner> fuzzer_task_runner,
+             std::shared_ptr<std::map<uint32_t, std::vector<uint8_t>>>
+                 serialized_bits,
+             uint32_t bits_id, const std::vector<uint8_t>& bits) {
+            fuzzer_task_runner->PostTask(
+                FROM_HERE,
+                base::BindOnce(
+                    [](std::shared_ptr<std::map<uint32_t, std::vector<uint8_t>>>
+                           serialized_bits,
+                       uint32_t bits_id, std::vector<uint8_t> bits) {
+                      (*serialized_bits)[bits_id] = std::move(bits);
+                    },
+                    std::move(serialized_bits), bits_id, bits));
+          },
+          GetFuzzerTaskRunner(), std::move(serialized_handle_bits), bits_id));
 }
 
 void FileSystemAccessManagerTestcase::DeserializeHandle(
@@ -320,16 +342,32 @@ void FileSystemAccessManagerTestcase::DeserializeHandle(
   if (!context) {
     return;
   }
-  if (action.bits().empty()) {
-    // FileSystemAccessContext is browser-internal, so this is harness-only.
+  std::vector<uint8_t> bits;
+  if (action.has_bits()) {
+    bits.assign(action.bits().begin(), action.bits().end());
+  } else if (action.has_bits_id()) {
+    auto it = serialized_handle_bits_->find(action.bits_id());
+    if (it == serialized_handle_bits_->end()) {
+      return;
+    }
+    bits = it->second;
+  } else {
+    return;
+  }
+  if (bits.empty()) {
+    // FileSystemAccessContext is browser-internal and never receives renderer
+    // bytes, so malformed raw bits are a harness-only concern.
+    return;
+  }
+  FileSystemAccessHandleData data;
+  if (!data.ParseFromString(base::as_string_view(bits)) ||
+      data.data_case() == FileSystemAccessHandleData::DATA_NOT_SET) {
     return;
   }
   mojo::Remote<blink::mojom::FileSystemAccessTransferToken> token;
   auto receiver = token.BindNewPipeAndPassReceiver();
-  context->get()->DeserializeHandle(
-      storage_key_,
-      std::vector<uint8_t>(action.bits().begin(), action.bits().end()),
-      std::move(receiver));
+  context->get()->DeserializeHandle(storage_key_, std::move(bits),
+                                    std::move(receiver));
   ::mojolpm::GetContext()->AddInstance(action.token_id(), std::move(token));
 }
 

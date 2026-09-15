@@ -21,12 +21,16 @@ import "third_party/blink/public/mojom/file_system_access/file_system_access_tra
 message SerializeHandleAction {
   required uint32 context_id = 1;
   required uint32 token_id = 2;
+  required uint32 bits_id = 3;
 }
 
 message DeserializeHandleAction {
   required uint32 context_id = 1;
   required uint32 token_id = 2;
-  optional bytes bits = 3;
+  oneof bits_source {
+    bytes bits = 3;
+    uint32 bits_id = 4;
+  }
 }
 
 message RunUntilIdleAction {
