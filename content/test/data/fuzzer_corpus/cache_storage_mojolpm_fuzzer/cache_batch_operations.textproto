@@ -1,0 +1,78 @@
+actions {
+  cache_storage_remote_action {
+    id: 0
+    m_open {
+      m_cache_name {
+        new {
+          id: 1
+          m_data {
+            values {
+              value: 112
+            }
+            values {
+              value: 117
+            }
+            values {
+              value: 116
+            }
+          }
+        }
+      }
+      m_trace_id: 1
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  cache_storage_cache_remote_action {
+    id: 0
+    m_batch {
+      m_batch_operations {
+        values {
+          value {
+            new {
+              id: 1
+              m_operation_type: MojoLPM_OperationType_kDelete
+              m_request {
+                new {
+                  id: 2
+                  m_url {
+                    new {
+                      id: 3
+                      m_url: "https://example.test/resource"
+                    }
+                  }
+                  m_method: "GET"
+                  m_headers {
+                    new {
+                      id: 4
+                      m_headers {}
+                    }
+                  }
+                  m_navigation_redirect_chain {}
+                }
+              }
+            }
+          }
+        }
+      }
+      m_trace_id: 2
+    }
+  }
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+  action_indexes: 3
+  action_indexes: 4
+}
+sequence_indexes: 0

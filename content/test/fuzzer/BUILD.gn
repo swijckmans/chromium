@@ -211,6 +211,29 @@ content_mojolpm_fuzzer_test("dom_storage_mojolpm_fuzzer") {
   ]
 }
 
+content_mojolpm_fuzzer_test("cache_storage_mojolpm_fuzzer") {
+  sources = [ "cache_storage_mojolpm_fuzzer.cc" ]
+
+  proto_source = "cache_storage_mojolpm_fuzzer.proto"
+  testcase_proto_kind = "content.fuzzing.cache_storage.proto.Testcase"
+
+  deps = [
+    ":mojolpm_fuzzer_support",
+    "//content/browser:for_content_tests",
+    "//content/public/browser:browser_sources",
+    "//third_party/blink/public/mojom:mojom_platform_mojolpm",
+  ]
+
+  proto_deps = [ "//third_party/blink/public/mojom:mojom_platform_mojolpm" ]
+
+  seed_corpus_sources = [
+    "//content/test/data/fuzzer_corpus/cache_storage_mojolpm_fuzzer/basic_operations.textproto",
+    "//content/test/data/fuzzer_corpus/cache_storage_mojolpm_fuzzer/cache_batch_operations.textproto",
+    "//content/test/data/fuzzer_corpus/cache_storage_mojolpm_fuzzer/cache_cleanup_operations.textproto",
+    "//content/test/data/fuzzer_corpus/cache_storage_mojolpm_fuzzer/cache_match_operations.textproto",
+  ]
+}
+
 content_mojolpm_fuzzer_test("file_system_manager_mojolpm_fuzzer") {
   sources = [ "file_system_manager_mojolpm_fuzzer.cc" ]
 

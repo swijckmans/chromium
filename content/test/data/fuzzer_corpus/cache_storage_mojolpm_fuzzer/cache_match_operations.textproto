@@ -1,0 +1,48 @@
+actions {
+  cache_storage_remote_action {
+    id: 0
+    m_match {
+      m_request {
+        new {
+          id: 1
+          m_url {
+            new {
+              id: 2
+              m_url: "https://example.test/resource"
+            }
+          }
+          m_method: "GET"
+          m_headers {
+            new {
+              id: 5
+              m_headers {}
+            }
+          }
+          m_navigation_redirect_chain {}
+        }
+      }
+      m_match_options {
+        new {
+          id: 3
+          m_query_options {
+            new {
+              id: 4
+              m_ignore_search: true
+            }
+          }
+        }
+      }
+      m_in_related_fetch_event: false
+      m_in_range_fetch_event: false
+      m_trace_id: 3
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+}
+sequence_indexes: 0

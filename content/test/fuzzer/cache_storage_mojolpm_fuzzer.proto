@@ -1,0 +1,33 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Message format for the MojoLPM fuzzer for the Cache Storage interfaces.
+
+syntax = "proto2";
+
+package content.fuzzing.cache_storage.proto;
+
+import "third_party/blink/public/mojom/cache_storage/cache_storage.mojom.mojolpm.proto";
+
+message RunUntilIdleAction {}
+
+message Action {
+  oneof action {
+    RunUntilIdleAction run_until_idle = 1;
+    mojolpm.blink.mojom.CacheStorage.RemoteAction cache_storage_remote_action =
+        2;
+    mojolpm.blink.mojom.CacheStorageCache.AssociatedRemoteAction
+        cache_storage_cache_remote_action = 3;
+  }
+}
+
+message Sequence {
+  repeated uint32 action_indexes = 1 [packed = true];
+}
+
+message Testcase {
+  repeated Action actions = 1;
+  repeated Sequence sequences = 2;
+  repeated uint32 sequence_indexes = 3 [packed = true];
+}

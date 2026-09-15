@@ -1,0 +1,47 @@
+actions {
+  cache_storage_remote_action {
+    id: 0
+    m_open {
+      m_cache_name {
+        new {
+          id: 1
+          m_data {
+            values {
+              value: 98
+            }
+            values {
+              value: 97
+            }
+            values {
+              value: 115
+            }
+            values {
+              value: 105
+            }
+            values {
+              value: 99
+            }
+          }
+        }
+      }
+      m_trace_id: 1
+    }
+  }
+}
+actions {
+  run_until_idle {}
+}
+actions {
+  cache_storage_remote_action {
+    id: 0
+    m_keys {
+      m_trace_id: 2
+    }
+  }
+}
+sequences {
+  action_indexes: 0
+  action_indexes: 1
+  action_indexes: 2
+}
+sequence_indexes: 0
