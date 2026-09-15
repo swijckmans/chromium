@@ -5258,8 +5258,11 @@ void RenderFrameHostImpl::OnCreateChildFrame(
     blink::FrameOwnerElementType owner_type,
     ukm::SourceId document_ukm_source_id,
     std::unique_ptr<base::UnguessableToken> sandbox_origin_token) {
-  // TODO(lukasza): Call ReceivedBadMessage when |frame_unique_name| is empty.
-  CHECK(!frame_unique_name.empty());
+  if (frame_unique_name.empty()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_CREATE_CHILD_FRAME_EMPTY_UNIQUE_NAME);
+    return;
+  }
   CHECK(browser_interface_broker_receiver.is_valid());
   CHECK(policy_container_bind_params->receiver.is_valid());
   CHECK(associated_interface_provider_receiver.is_valid());

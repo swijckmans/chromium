@@ -1604,6 +1604,27 @@ TEST_F(RenderFrameHostImplTest, CreateNewWindowInvalidDisposition) {
   EXPECT_EQ(1, process()->bad_msg_count());
 }
 
+TEST_F(RenderFrameHostImplTest,
+       CreateChildFrameWithEmptyUniqueNameIsBadMessage) {
+  const size_t child_count = main_test_rfh()->frame_tree_node()->child_count();
+  EXPECT_EQ(0, process()->bad_msg_count());
+
+  main_test_rfh()->OnCreateChildFrame(
+      process()->GetNextRoutingID(),
+      TestRenderFrameHost::CreateStubFrameRemote(),
+      TestRenderFrameHost::CreateStubBrowserInterfaceBrokerReceiver(),
+      TestRenderFrameHost::CreateStubPolicyContainerBindParams(),
+      TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
+      blink::mojom::TreeScopeType::kDocument, std::string(), std::string(),
+      false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
+      blink::FramePolicy(), blink::mojom::FrameOwnerProperties(),
+      blink::FrameOwnerElementType::kIframe, ukm::kInvalidSourceId);
+
+  EXPECT_EQ(1, process()->bad_msg_count());
+  EXPECT_EQ(child_count, main_test_rfh()->frame_tree_node()->child_count());
+}
+
 class RenderFrameHostImplCookieChangeListenerTest
     : public RenderFrameHostImplTest,
       public testing::WithParamInterface<bool> {
