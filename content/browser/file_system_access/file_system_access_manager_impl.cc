@@ -57,6 +57,7 @@
 #include "content/public/common/content_switches.h"
 #include "crypto/secure_hash.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
+#include "mojo/public/cpp/bindings/message.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/filename_util.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
@@ -614,12 +615,6 @@ void FileSystemAccessManagerImpl::GetSandboxedFileSystemForDevtools(
     const std::vector<std::string>& directory_path_components,
     GetSandboxedFileSystemCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (const auto& component : directory_path_components) {
-    if (!IsValidDevToolsPathComponent(component)) {
-      receivers_.ReportBadMessage("Invalid path component");
-      return;
-    }
-  }
   GetSandboxedFileSystem(receivers_.current_context(),
                          /*bucket=*/std::nullopt, directory_path_components,
                          std::move(callback));
@@ -631,6 +626,13 @@ void FileSystemAccessManagerImpl::GetSandboxedFileSystem(
     const std::vector<std::string>& directory_path_components,
     GetSandboxedFileSystemCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  for (const auto& component : directory_path_components) {
+    if (!IsValidDevToolsPathComponent(component)) {
+      mojo::ReportBadMessage("Invalid path component");
+      return;
+    }
+  }
 
   if (!ChildProcessSecurityPolicy::GetInstance()->CanAccessDataForOrigin(
           binding_context.process_id(), binding_context.storage_key.origin())) {
