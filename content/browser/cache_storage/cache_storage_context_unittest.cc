@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
@@ -17,8 +18,11 @@
 #include "components/services/storage/public/mojom/storage_usage_info.mojom.h"
 #include "content/browser/cache_storage/cache_storage_context_impl.h"
 #include "content/public/browser/storage_usage_info.h"
+#include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/test_support/fake_message_dispatch_context.h"
+#include "mojo/public/cpp/test_support/test_utils.h"
 #include "storage/browser/test/mock_quota_manager.h"
 #include "storage/browser/test/mock_quota_manager_proxy.h"
 #include "storage/browser/test/mock_special_storage_policy.h"
@@ -26,6 +30,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/mojom/cache_storage/cache_storage.mojom.h"
+#include "url/gurl.h"
 
 namespace content {
 
@@ -138,6 +143,42 @@ TEST_F(CacheStorageContextTest, DefaultBucketCreatedOnAddReceiver) {
   EXPECT_EQ(result.storage_key,
             blink::StorageKey::CreateFromStringForTesting(kGoogleStorageKey));
   EXPECT_GT(result.id.value(), 0);
+}
+
+TEST_F(CacheStorageContextTest, BatchPutWithoutResponseIsBadMessage) {
+  mojo::Remote<blink::mojom::CacheStorage> cache_storage_remote;
+  AddReceiver(
+      cache_storage_remote.BindNewPipeAndPassReceiver(),
+      blink::StorageKey::CreateFromStringForTesting(kExampleStorageKey));
+
+  base::RunLoop open_loop;
+  mojo::AssociatedRemote<blink::mojom::CacheStorageCache> cache_remote;
+  cache_storage_remote->Open(
+      u"cache_name", /*trace_id=*/0,
+      base::BindLambdaForTesting(
+          [&](blink::mojom::CacheStorage::OpenResult result) {
+            ASSERT_TRUE(result.has_value());
+            cache_remote.Bind(std::move(result.value()));
+            open_loop.Quit();
+          }));
+  open_loop.Run();
+
+  auto request = blink::mojom::FetchAPIRequest::New();
+  request->url = GURL("https://example.com/");
+  auto operation = blink::mojom::BatchOperation::New();
+  operation->operation_type = blink::mojom::OperationType::kPut;
+  operation->request = std::move(request);
+
+  std::vector<blink::mojom::BatchOperationPtr> operations;
+  operations.push_back(std::move(operation));
+
+  mojo::FakeMessageDispatchContext fake_dispatch_context;
+  mojo::test::BadMessageObserver bad_message_observer;
+  cache_remote->Batch(
+      std::move(operations), /*trace_id=*/0,
+      base::BindOnce([](blink::mojom::CacheStorageVerboseErrorPtr) {}));
+  EXPECT_EQ("CSDH_UNEXPECTED_OPERATION",
+            bad_message_observer.WaitForBadMessage());
 }
 
 TEST_F(CacheStorageContextTest, GetDefaultBucketError) {
