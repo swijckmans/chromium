@@ -88,6 +88,9 @@ bool ValidBatchOperations(
     if (op->operation_type != type) {
       return false;
     }
+    if (type == blink::mojom::OperationType::kPut && !op->response) {
+      return false;
+    }
   }
   return true;
 }
