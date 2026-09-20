@@ -57,6 +57,7 @@
 #include "content/public/common/content_switches.h"
 #include "crypto/secure_hash.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
+#include "mojo/public/cpp/bindings/message.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/filename_util.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
@@ -106,6 +107,22 @@ namespace {
 
 constexpr char kThirdPartyIframesNotAllowedToShowFilePicker[] =
     "Third party iframes are not allowed to show a file picker.";
+
+bool IsValidDevToolsPathComponent(std::string_view component) {
+  if (component.empty() || !base::IsStringUTF8(component)) {
+    return false;
+  }
+
+  const base::FilePath path =
+      base::FilePath::FromUTF8Unsafe(std::string(component));
+  for (base::FilePath::CharType character : path.value()) {
+    if (base::FilePath::IsSeparator(character)) {
+      return false;
+    }
+  }
+  return path != base::FilePath(base::FilePath::kCurrentDirectory) &&
+         path != base::FilePath(base::FilePath::kParentDirectory);
+}
 
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_ANDROID)
 bool CreateAndTruncateLocalFile(const base::FilePath& path) {
@@ -609,6 +626,13 @@ void FileSystemAccessManagerImpl::GetSandboxedFileSystem(
     const std::vector<std::string>& directory_path_components,
     GetSandboxedFileSystemCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  for (const auto& component : directory_path_components) {
+    if (!IsValidDevToolsPathComponent(component)) {
+      mojo::ReportBadMessage("Invalid path component");
+      return;
+    }
+  }
 
   if (!ChildProcessSecurityPolicy::GetInstance()->CanAccessDataForOrigin(
           binding_context.process_id(), binding_context.storage_key.origin())) {
@@ -1685,7 +1709,7 @@ void FileSystemAccessManagerImpl::DidOpenSandboxedFileSystem(
 
   base::FilePath file_path = base::FilePath(root.path());
   for (const auto& component : directory_path_components) {
-    file_path = file_path.AppendASCII(component);
+    file_path = file_path.AppendUTF8(component);
   }
 
   auto url = context()->CreateCrackedFileSystemURL(
