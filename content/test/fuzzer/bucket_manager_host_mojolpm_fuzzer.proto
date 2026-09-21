@@ -1,0 +1,45 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto2";
+
+package content.fuzzing.bucket_manager_host.proto;
+
+import "third_party/blink/public/mojom/buckets/bucket_manager_host.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/cache_storage/cache_storage.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_directory_handle.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/file_system_access/file_system_access_file_handle.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/indexeddb/indexeddb.mojom.mojolpm.proto";
+import "third_party/blink/public/mojom/locks/lock_manager.mojom.mojolpm.proto";
+
+message RunUntilIdleAction {}
+
+message Action {
+  oneof action {
+    RunUntilIdleAction run_until_idle = 1;
+    mojolpm.blink.mojom.BucketManagerHost.RemoteAction
+        bucket_manager_host_remote_action = 2;
+    mojolpm.blink.mojom.BucketHost.RemoteAction bucket_host_remote_action = 3;
+    mojolpm.blink.mojom.CacheStorage.RemoteAction cache_storage_remote_action =
+        4;
+    mojolpm.blink.mojom.CacheStorageCache.AssociatedRemoteAction
+        cache_storage_cache_remote_action = 5;
+    mojolpm.blink.mojom.IDBFactory.RemoteAction idb_factory_remote_action = 6;
+    mojolpm.blink.mojom.LockManager.RemoteAction lock_manager_remote_action = 7;
+    mojolpm.blink.mojom.FileSystemAccessDirectoryHandle.RemoteAction
+        file_system_access_directory_handle_remote_action = 8;
+    mojolpm.blink.mojom.FileSystemAccessFileHandle.RemoteAction
+        file_system_access_file_handle_remote_action = 9;
+  }
+}
+
+message Sequence {
+  repeated uint32 action_indexes = 1 [packed = true];
+}
+
+message Testcase {
+  repeated Action actions = 1;
+  repeated Sequence sequences = 2;
+  repeated uint32 sequence_indexes = 3 [packed = true];
+}
