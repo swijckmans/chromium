@@ -104,6 +104,17 @@ FuzzerEnvironmentWithTaskEnvironment::FuzzerEnvironmentWithTaskEnvironment(
 
 FuzzerEnvironmentWithTaskEnvironment::~FuzzerEnvironmentWithTaskEnvironment() {}
 
+FuzzerEnvironmentWithMainLoopIO::FuzzerEnvironmentWithMainLoopIO(
+    int argc,
+    const char* const* argv)
+    : FuzzerEnvironment(argc, argv),
+      task_environment_(
+          base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC,
+          base::test::TaskEnvironment::ThreadingMode::MULTIPLE_THREADS,
+          BrowserTaskEnvironment::IO_MAINLOOP) {}
+
+FuzzerEnvironmentWithMainLoopIO::~FuzzerEnvironmentWithMainLoopIO() {}
+
 RenderViewHostTestHarnessAdapter::RenderViewHostTestHarnessAdapter()
     : RenderViewHostTestHarness(
           base::test::TaskEnvironment::TimeSource::MOCK_TIME,
