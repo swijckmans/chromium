@@ -10,13 +10,16 @@
 
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
+#include "base/synchronization/waitable_event.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
+#include "base/threading/thread.h"
 #include "build/build_config.h"
 #include "components/services/storage/public/cpp/quota_error_or.h"
 #include "storage/browser/file_system/external_mount_points.h"
@@ -80,6 +83,17 @@ class FileSystemContextTest : public testing::Test {
         base::SingleThreadTaskRunner::GetCurrentDefault(),
         std::move(external_mount_points), storage_policy_,
         mock_quota_manager_->proxy(), std::move(additional_providers),
+        std::vector<URLRequestAutoMountHandler>(), data_dir_.GetPath(),
+        CreateAllowFileAccessOptions());
+  }
+
+  scoped_refptr<FileSystemContext> CreateFileSystemContextOnRunnersForTest(
+      scoped_refptr<base::SingleThreadTaskRunner> io_task_runner,
+      scoped_refptr<base::SequencedTaskRunner> file_task_runner) {
+    return FileSystemContext::Create(
+        std::move(io_task_runner), std::move(file_task_runner),
+        ExternalMountPoints::CreateRefCounted(), storage_policy_,
+        mock_quota_manager_->proxy(), {},
         std::vector<URLRequestAutoMountHandler>(), data_dir_.GetPath(),
         CreateAllowFileAccessOptions());
   }
@@ -174,6 +188,87 @@ TEST_F(FileSystemContextTest, NullExternalMountPoints) {
 
   IsolatedContext::GetInstance()->RevokeFileSystem(isolated_id);
   ExternalMountPoints::GetSystemInstance()->RevokeFileSystem("system");
+}
+
+TEST_F(FileSystemContextTest, QuotaReplyAfterLastRefReleasedOffIOSequence) {
+  base::Thread io_thread("FileSystemIO");
+  ASSERT_TRUE(io_thread.Start());
+  base::Thread file_thread("FileSystemFile");
+  ASSERT_TRUE(file_thread.Start());
+
+  auto io_task_runner = io_thread.task_runner();
+  auto file_task_runner = file_thread.task_runner();
+  auto file_system_context =
+      CreateFileSystemContextOnRunnersForTest(io_task_runner, file_task_runner);
+
+  base::WaitableEvent open_started(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent file_task_started(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent io_task_started(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent release_io_task(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent release_file_task(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+  base::WaitableEvent open_completed(
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  file_task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::WaitableEvent* started, base::WaitableEvent* release) {
+            started->Signal();
+            release->Wait();
+          },
+          &file_task_started, &release_file_task));
+  file_task_started.Wait();
+
+  const blink::StorageKey storage_key =
+      blink::StorageKey::CreateFromStringForTesting(kTestOrigin);
+  FileSystemContext* context = file_system_context.get();
+  io_task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](FileSystemContext* context, const blink::StorageKey& storage_key,
+             base::WaitableEvent* started, base::WaitableEvent* completed) {
+            context->OpenFileSystem(
+                storage_key, std::nullopt, kFileSystemTypeTemporary,
+                OPEN_FILE_SYSTEM_CREATE_IF_NONEXISTENT,
+                base::BindOnce([](base::WaitableEvent* completed,
+                                  const FileSystemURL&, const std::string&,
+                                  base::File::Error) { completed->Signal(); },
+                               completed));
+            started->Signal();
+          },
+          base::Unretained(context), storage_key, &open_started,
+          &open_completed));
+  open_started.Wait();
+
+  // Block IO after the quota reply is queued but before it can run.
+  io_task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::WaitableEvent* started, base::WaitableEvent* release) {
+            started->Signal();
+            release->Wait();
+          },
+          &io_task_started, &release_io_task));
+  io_task_started.Wait();
+
+  base::RunLoop().RunUntilIdle();
+  // DeleteSoon is queued after the already queued quota reply.
+  file_system_context = nullptr;
+
+  release_io_task.Signal();
+  release_file_task.Signal();
+  open_completed.Wait();
 }
 #endif  // !defiend(OS_CHROMEOS)
 

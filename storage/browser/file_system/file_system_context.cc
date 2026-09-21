@@ -397,7 +397,7 @@ void FileSystemContext::OpenFileSystem(
   }
 
   auto got_bucket = base::BindOnce(&FileSystemContext::OnGetOrCreateBucket,
-                                   weak_factory_.GetWeakPtr(), storage_key,
+                                   base::WrapRefCounted(this), storage_key,
                                    type, mode, std::move(callback));
   if (bucket.has_value()) {
     if (!bucket->id) {
@@ -541,7 +541,7 @@ void FileSystemContext::DeleteFileSystem(const blink::StorageKey& storage_key,
   quota_manager_proxy()->UpdateOrCreateBucket(
       BucketInitParams::ForDefaultBucket(storage_key), io_task_runner_.get(),
       base::BindOnce(&FileSystemContext::OnGetBucketForDeleteFileSystem,
-                     weak_factory_.GetWeakPtr(), type, std::move(callback)));
+                     base::WrapRefCounted(this), type, std::move(callback)));
 }
 
 void FileSystemContext::OnGetBucketForDeleteFileSystem(

@@ -21,7 +21,6 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/ref_counted_delete_on_sequence.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner_helpers.h"
 #include "base/threading/sequence_bound.h"
 #include "base/types/pass_key.h"
@@ -468,8 +467,6 @@ class COMPONENT_EXPORT(STORAGE_BROWSER) FileSystemContext
   const std::unique_ptr<FileSystemOperationRunner> operation_runner_;
 
   std::unique_ptr<mojo::Receiver<mojom::QuotaClient>> quota_client_receiver_;
-
-  base::WeakPtrFactory<FileSystemContext> weak_factory_{this};
 };
 
 }  // namespace storage
