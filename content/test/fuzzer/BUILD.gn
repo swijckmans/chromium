@@ -211,6 +211,29 @@ content_mojolpm_fuzzer_test("dom_storage_mojolpm_fuzzer") {
   ]
 }
 
+content_mojolpm_fuzzer_test("background_fetch_service_mojolpm_fuzzer") {
+  sources = [ "background_fetch_service_mojolpm_fuzzer.cc" ]
+
+  proto_source = "background_fetch_service_mojolpm_fuzzer.proto"
+  testcase_proto_kind = "content.fuzzing.background_fetch_service.proto.Testcase"
+
+  deps = [
+    ":mojolpm_fuzzer_support",
+    "//content/browser:for_content_tests",
+    "//content/public/browser:browser_sources",
+    "//third_party/blink/public/mojom:mojom_modules_mojolpm",
+  ]
+
+  proto_deps = [ "//third_party/blink/public/mojom:mojom_modules_mojolpm" ]
+
+  seed_corpus_sources = [
+    "//content/test/data/fuzzer_corpus/background_fetch_service_mojolpm_fuzzer/duplicate_and_lifetime.textproto",
+    "//content/test/data/fuzzer_corpus/background_fetch_service_mojolpm_fuzzer/fetch_and_abort.textproto",
+    "//content/test/data/fuzzer_corpus/background_fetch_service_mojolpm_fuzzer/fetch_get_match.textproto",
+    "//content/test/data/fuzzer_corpus/background_fetch_service_mojolpm_fuzzer/invalid_registration_id.textproto",
+  ]
+}
+
 content_mojolpm_fuzzer_test("file_system_manager_mojolpm_fuzzer") {
   sources = [ "file_system_manager_mojolpm_fuzzer.cc" ]
 

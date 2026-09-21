@@ -73,6 +73,15 @@ class FuzzerEnvironmentWithTaskEnvironment : public FuzzerEnvironment {
   BrowserTaskEnvironment task_environment_;
 };
 
+class FuzzerEnvironmentWithMainLoopIO : public FuzzerEnvironment {
+ public:
+  FuzzerEnvironmentWithMainLoopIO(int argc, const char* const* argv);
+  ~FuzzerEnvironmentWithMainLoopIO() override;
+
+ private:
+  BrowserTaskEnvironment task_environment_;
+};
+
 // Fuzzers which need RenderViewHost/RenderFrameHost can use this adapter to
 // reuse the existing test harness.
 class RenderViewHostTestHarnessAdapter : public RenderViewHostTestHarness {
