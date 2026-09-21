@@ -227,6 +227,35 @@ TEST_F(P2PSocketTcpTest, SendDataNoAuth) {
   EXPECT_TRUE(fake_client_->connection_error());
 }
 
+TEST_F(P2PSocketTcpTest, SendOversizedPacketClosesSocket) {
+  webrtc::AsyncSocketPacketOptions options;
+  std::vector<uint8_t> packet(P2PSocket::kMaximumPacketSize + 1);
+
+  socket_ = nullptr;
+  auto* socket_impl_ptr = socket_impl_.get();
+  socket_delegate_.ExpectDestruction(std::move(socket_impl_));
+  socket_impl_ptr->Send(packet, P2PPacketInfo(dest_.ip_address, options, 0));
+
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(fake_client_->connection_error());
+}
+
+TEST_F(P2PSocketTcpTest, SendToWrongDestinationClosesSocket) {
+  webrtc::AsyncSocketPacketOptions options;
+  std::vector<uint8_t> packet = {0x01};
+  net::IPEndPoint wrong_destination = ParseAddress(kTestIpAddress2, kTestPort2);
+
+  socket_ = nullptr;
+  auto* socket_impl_ptr = socket_impl_.get();
+  socket_delegate_.ExpectDestruction(std::move(socket_impl_));
+  socket_impl_ptr->Send(packet, P2PPacketInfo(wrong_destination, options, 0));
+
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(fake_client_->connection_error());
+}
+
 // Verify that we can send data after we've received STUN response
 // from the other side.
 TEST_F(P2PSocketTcpTest, SendAfterStunRequest) {

@@ -509,6 +509,20 @@ TEST_F(P2PSocketUdpTest, SendDataNoAuth) {
   EXPECT_TRUE(fake_client_->connection_error());
 }
 
+TEST_F(P2PSocketUdpTest, SendOversizedPacketClosesSocket) {
+  webrtc::AsyncSocketPacketOptions options;
+  std::vector<uint8_t> packet(P2PSocket::kMaximumPacketSize + 1);
+
+  socket_ = nullptr;
+  auto* socket_impl_ptr = socket_impl_.get();
+  socket_delegate_.ExpectDestruction(std::move(socket_impl_));
+  socket_impl_ptr->Send(packet, P2PPacketInfo(dest1_, options, 0));
+
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_TRUE(fake_client_->connection_error());
+}
+
 TEST_F(P2PSocketUdpTest, SendRestrictedAddress) {
   base::test::ScopedFeatureList feature_list;
   int restricted_port = 12345;

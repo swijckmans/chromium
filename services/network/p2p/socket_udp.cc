@@ -625,7 +625,9 @@ void P2PSocketUdp::Send(base::span<const uint8_t> data,
 bool P2PSocketUdp::SendPacket(base::span<const uint8_t> data,
                               const P2PPacketInfo& packet_info) {
   if (data.size() > kMaximumPacketSize) {
-    NOTREACHED();
+    LOG(ERROR) << "Page tried to send an oversized packet.";
+    OnError();
+    return false;
   }
   if (interceptor_) {
     P2PPendingPacket packet(packet_info.destination, data,
