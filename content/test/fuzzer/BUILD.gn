@@ -211,6 +211,32 @@ content_mojolpm_fuzzer_test("dom_storage_mojolpm_fuzzer") {
   ]
 }
 
+content_mojolpm_fuzzer_test("bucket_manager_host_mojolpm_fuzzer") {
+  sources = [ "bucket_manager_host_mojolpm_fuzzer.cc" ]
+
+  proto_source = "bucket_manager_host_mojolpm_fuzzer.proto"
+  testcase_proto_kind = "content.fuzzing.bucket_manager_host.proto.Testcase"
+
+  deps = [
+    ":mojolpm_fuzzer_support",
+    "//content/browser:for_content_tests",
+    "//content/public/browser:browser_sources",
+    "//third_party/blink/public/mojom:mojom_modules_mojolpm",
+    "//third_party/blink/public/mojom:mojom_platform_mojolpm",
+  ]
+
+  proto_deps = [
+    "//third_party/blink/public/mojom:mojom_modules_mojolpm",
+    "//third_party/blink/public/mojom:mojom_platform_mojolpm",
+  ]
+
+  seed_corpus_sources = [
+    "//content/test/data/fuzzer_corpus/bucket_manager_host_mojolpm_fuzzer/delete_while_handles_live.textproto",
+    "//content/test/data/fuzzer_corpus/bucket_manager_host_mojolpm_fuzzer/devtools_paths.textproto",
+    "//content/test/data/fuzzer_corpus/bucket_manager_host_mojolpm_fuzzer/open_and_fanout.textproto",
+  ]
+}
+
 content_mojolpm_fuzzer_test("file_system_manager_mojolpm_fuzzer") {
   sources = [ "file_system_manager_mojolpm_fuzzer.cc" ]
 
