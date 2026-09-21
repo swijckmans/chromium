@@ -378,7 +378,10 @@ bool P2PSocketTcpBase::SendPacket(base::span<const uint8_t> data,
   // Renderer should use this socket only to send data to |remote_address_|.
   if (data.size() > kMaximumPacketSize ||
       !(packet_info.destination == remote_address_.ip_address)) {
-    NOTREACHED();
+    LOG(ERROR) << "Page tried to send an oversized packet or to an invalid "
+                  "destination.";
+    OnError();
+    return false;
   }
 
   if (!connected_) {
