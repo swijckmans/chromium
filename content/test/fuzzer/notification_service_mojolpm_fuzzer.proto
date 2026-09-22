@@ -1,0 +1,29 @@
+syntax = "proto2";
+
+package content.fuzzing.notification_service.proto;
+
+import "third_party/blink/public/mojom/notifications/notification_service.mojom.mojolpm.proto";
+
+message RunUntilIdleAction {}
+
+message Action {
+  oneof action {
+    RunUntilIdleAction run_until_idle = 1;
+    mojolpm.blink.mojom.NotificationService.RemoteAction
+        notification_service_remote_action = 2;
+    mojolpm.blink.mojom.NonPersistentNotificationListener.RemoteAction
+        non_persistent_notification_listener_remote_action = 3;
+    mojolpm.blink.mojom.NonPersistentNotificationListener.ReceiverAction
+        non_persistent_notification_listener_receiver_action = 4;
+  }
+}
+
+message Sequence {
+  repeated uint32 action_indexes = 1 [packed = true];
+}
+
+message Testcase {
+  repeated Action actions = 1;
+  repeated Sequence sequences = 2;
+  repeated uint32 sequence_indexes = 3 [packed = true];
+}
