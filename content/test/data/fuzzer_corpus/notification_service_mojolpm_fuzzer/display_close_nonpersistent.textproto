@@ -1,0 +1,33 @@
+actions {
+  notification_service_remote_action {
+    id: 0
+    m_display_non_persistent_notification {
+      m_token: "notification-token"
+      m_notification_data {
+        new {
+          id: 1
+          m_title { new { id: 2 m_data { values { value: 78 } } } }
+          m_body { new { id: 3 m_data { values { value: 98 } } } }
+          m_tag: "notification-tag"
+          m_image { new { id: 4 m_url: "https://example.com/image.png" } }
+          m_icon { new { id: 5 m_url: "https://example.com/icon.png" } }
+          m_badge { new { id: 6 m_url: "https://example.com/badge.png" } }
+        }
+      }
+      m_notification_resources { new { id: 7 } }
+      m_event_listener: 0
+    }
+  }
+}
+actions { run_until_idle {} }
+actions {
+  notification_service_remote_action {
+    id: 0
+    m_close_non_persistent_notification {
+      m_token: "notification-token"
+    }
+  }
+}
+actions { run_until_idle {} }
+sequences { action_indexes: [0, 1, 2, 3] }
+sequence_indexes: 0

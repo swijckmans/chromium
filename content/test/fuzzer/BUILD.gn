@@ -252,6 +252,29 @@ content_mojolpm_fuzzer_test("file_system_manager_mojolpm_fuzzer") {
   ]
 }
 
+content_mojolpm_fuzzer_test("notification_service_mojolpm_fuzzer") {
+  sources = [ "notification_service_mojolpm_fuzzer.cc" ]
+
+  proto_source = "notification_service_mojolpm_fuzzer.proto"
+  testcase_proto_kind = "content.fuzzing.notification_service.proto.Testcase"
+
+  deps = [
+    ":mojolpm_fuzzer_support",
+    "//content/browser:for_content_tests",
+    "//content/public/browser:browser_sources",
+    "//third_party/blink/public/mojom:mojom_modules_mojolpm",
+  ]
+
+  proto_deps = [ "//third_party/blink/public/mojom:mojom_modules_mojolpm" ]
+
+  seed_corpus_sources = [
+    "//content/test/data/fuzzer_corpus/notification_service_mojolpm_fuzzer/display_close_nonpersistent.textproto",
+    "//content/test/data/fuzzer_corpus/notification_service_mojolpm_fuzzer/display_get_close_persistent.textproto",
+    "//content/test/data/fuzzer_corpus/notification_service_mojolpm_fuzzer/invalid_registration_id.textproto",
+    "//content/test/data/fuzzer_corpus/notification_service_mojolpm_fuzzer/resources_and_lifetime.textproto",
+  ]
+}
+
 content_mojolpm_fuzzer_test("audio_context_manager_mojolpm_fuzzer") {
   sources = [ "audio_context_manager_mojolpm_fuzzer.cc" ]
 

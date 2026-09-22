@@ -1,0 +1,34 @@
+actions {
+  notification_service_remote_action {
+    id: 0
+    m_display_persistent_notification {
+      m_service_worker_registration_id: -1
+      m_notification_data {
+        new {
+          id: 1
+          m_title { new { id: 2 m_data { values { value: 73 } } } }
+          m_body { new { id: 3 m_data { values { value: 110 } } } }
+          m_tag: "invalid-registration"
+          m_image { new { id: 4 m_url: "https://example.com/image.png" } }
+          m_icon { new { id: 5 m_url: "https://example.com/icon.png" } }
+          m_badge { new { id: 6 m_url: "https://example.com/badge.png" } }
+        }
+      }
+      m_notification_resources { new { id: 7 } }
+    }
+  }
+}
+actions { run_until_idle {} }
+actions {
+  notification_service_remote_action {
+    id: 0
+    m_get_notifications {
+      m_service_worker_registration_id: 9223372036854775807
+      m_filter_tag: ""
+      m_include_triggered: true
+    }
+  }
+}
+actions { run_until_idle {} }
+sequences { action_indexes: [0, 1, 2, 3] }
+sequence_indexes: 0
