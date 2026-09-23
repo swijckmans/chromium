@@ -2549,7 +2549,10 @@ error::Error WebGPUDecoderImpl::HandleSetWebGPUExecutionContextToken(
       break;
     }
     default:
-      NOTREACHED();
+      return error::kInvalidArguments;
+  }
+  if (isolation_key_provider_ == nullptr) {
+    return error::kNoError;
   }
   isolation_key_provider_->GetIsolationKey(
       execution_context_token,

@@ -4,6 +4,7 @@
 
 #include "gpu/command_buffer/service/webgpu_decoder.h"
 
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -96,6 +97,33 @@ TEST_F(WebGPUDecoderTest, IsolationKeyFromWorker) {
   cmd.Init(std::to_underlying(wgpu_context_token.variant_index()), high >> 32,
            high, low >> 32, low);
   ExecuteCmd(cmd);
+}
+
+TEST_F(WebGPUDecoderTest, InvalidExecutionContextTokenType) {
+  cmds::SetWebGPUExecutionContextToken cmd;
+  cmd.Init(4, 0x12345678, 0x9abcdef0, 0x13572468, 0x24681357);
+  EXPECT_EQ(error::kInvalidArguments, ExecuteCmd(cmd));
+
+  cmd.Init(std::numeric_limits<uint32_t>::max(), 0x12345678, 0x9abcdef0,
+           0x13572468, 0x24681357);
+  EXPECT_EQ(error::kInvalidArguments, ExecuteCmd(cmd));
+}
+
+TEST_F(WebGPUDecoderTest, IsolationKeyFromDocumentWithoutProvider) {
+  decoder_ = WebGPUDecoder::Create(
+      decoder_client_.get(), command_buffer_service_.get(), nullptr, nullptr,
+      &outputter_, {}, nullptr, DawnCacheOptions());
+  ASSERT_EQ(decoder_->Initialize(GpuFeatureInfo()), ContextResult::kSuccess);
+
+  blink::DocumentToken document_token;
+  blink::WebGPUExecutionContextToken wgpu_context_token(document_token);
+  uint64_t high = document_token->GetHighForSerialization();
+  uint64_t low = document_token->GetLowForSerialization();
+
+  cmds::SetWebGPUExecutionContextToken cmd;
+  cmd.Init(std::to_underlying(wgpu_context_token.variant_index()), high >> 32,
+           high, low >> 32, low);
+  EXPECT_EQ(error::kNoError, ExecuteCmd(cmd));
 }
 
 }  // namespace webgpu
