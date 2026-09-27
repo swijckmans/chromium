@@ -1,0 +1,4 @@
+HTTP/1.1 200 OK
+Clear-Site-Data: "cache", "cookies", "*"
+Accept-CH: sec-ch-ua
+

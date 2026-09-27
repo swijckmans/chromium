@@ -952,6 +952,19 @@ fuzzer_test("client_hints_fuzzer") {
   ]
 }
 
+fuzzer_test("parsed_headers_fuzzer") {
+  sources = [ "parsed_headers_fuzzer.cc" ]
+  deps = [
+    ":cpp",
+    "//base",
+    "//base:i18n",
+    "//net",
+    "//services/network/public/mojom:url_loader_base",
+    "//url",
+  ]
+  seed_corpus = "//services/network/public/cpp/parsed_headers_fuzzer_corpus"
+}
+
 fuzzer_test("avail_language_header_fuzzer") {
   sources = [ "avail_language_header_fuzzer.cc" ]
   deps = [
