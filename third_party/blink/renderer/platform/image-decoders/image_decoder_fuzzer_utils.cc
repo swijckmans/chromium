@@ -135,6 +135,9 @@ void FuzzIncrementalDecoder(DecoderType decoder_type, FuzzedDataProvider& fdp) {
     if (decoder->Failed()) {
       break;
     }
+    if ((op % 5) != 0 && delivered == 0) {
+      continue;
+    }
 
     switch (op % 5) {
       case 0:
