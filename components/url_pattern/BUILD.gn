@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//testing/libfuzzer/fuzzer_test.gni")
+
 source_set("url_pattern") {
   sources = [
     "simple_url_pattern_matcher.cc",
@@ -30,4 +32,14 @@ source_set("unit_tests") {
     "//testing/gtest",
     "//url",
   ]
+}
+
+fuzzer_test("simple_url_pattern_matcher_fuzzer") {
+  sources = [ "simple_url_pattern_matcher_fuzzer.cc" ]
+  deps = [
+    ":url_pattern",
+    "//base",
+    "//url",
+  ]
+  seed_corpus = "//components/url_pattern/simple_url_pattern_matcher_fuzzer_corpus"
 }

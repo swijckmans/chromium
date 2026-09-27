@@ -445,6 +445,31 @@ TEST(TokenizeTest, LenientPolicyTrailingEscape) {
   RunTokenizeTest("foo\\", expected_tokens, TokenizePolicy::kLenient);
 }
 
+TEST(TokenizeTest, InvalidUtf8AfterNamePrefix) {
+  ExpectTokenizeFail(std::string_view(":\xff", 2), "Missing parameter name");
+  ExpectTokenizeFail(std::string_view(":a\xff", 3), "Invalid UTF-8 codepoint");
+}
+
+TEST(TokenizeTest, LenientPolicyInvalidUtf8AfterNamePrefix) {
+  std::vector<Token> expected_tokens = {
+      Token(TokenType::kInvalidChar, 0, ":"),
+      Token(TokenType::kInvalidChar, 1, std::string_view("\xff", 1)),
+      Token(TokenType::kEnd, 2, std::string_view()),
+  };
+  RunTokenizeTest(std::string_view(":\xff", 2), expected_tokens,
+                  TokenizePolicy::kLenient);
+}
+
+TEST(TokenizeTest, LenientPolicyInvalidUtf8InsideName) {
+  std::vector<Token> expected_tokens = {
+      Token(TokenType::kName, 0, "a"),
+      Token(TokenType::kInvalidChar, 2, std::string_view("\xff", 1)),
+      Token(TokenType::kEnd, 3, std::string_view()),
+  };
+  RunTokenizeTest(std::string_view(":a\xff", 3), expected_tokens,
+                  TokenizePolicy::kLenient);
+}
+
 TEST(TokenizeTest, LenientPolicyRegexWithoutClose) {
   std::vector<Token> expected_tokens = {
       Token(TokenType::kInvalidChar, 0, "("),

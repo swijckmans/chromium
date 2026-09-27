@@ -87,14 +87,10 @@ class Tokenizer {
         size_t name_start = pos;
 
         // Iterate over codepoints until we find the first non-name codepoint.
+        // An invalid UTF-8 sequence also ends the name; it is left for the
+        // main loop to report so that `pos` always advances.
         while (pos < pattern_.size()) {
-          if (!status_.ok())
-            return base::unexpected(std::move(status_));
-          if (!NextAt(pos)) {
-            Error(absl::StrFormat("Invalid UTF-8 codepoint at index %d.", pos));
-            continue;
-          }
-          if (!IsNameCodepoint(codepoint_, pos == name_start))
+          if (!NextAt(pos) || !IsNameCodepoint(codepoint_, pos == name_start))
             break;
           pos = next_index_;
         }

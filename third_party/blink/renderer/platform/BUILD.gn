@@ -2900,12 +2900,38 @@ if (enable_dav1d_decoder) {
     seed_corpuses = [ "//third_party/blink/web_tests/images/resources/avif" ]
     additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
   }
+
+  blink_fuzzer_test("blink_avif_decoder_incremental_fuzzer") {
+    sources = [
+      "image-decoders/avif/avif_image_decoder_incremental_fuzzer.cc",
+    ]
+    deps = [
+      ":blink_image_decoder_fuzzer_test_support",
+      ":platform",
+    ]
+    seed_corpuses = [ "//third_party/blink/web_tests/images/resources/avif" ]
+    additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+  }
 }
 
 if (enable_jxl_decoder) {
   # Fuzzer for blink::JXLImageDecoder
   blink_fuzzer_test("blink_jxl_decoder_fuzzer") {
     sources = [ "image-decoders/jxl/jxl_image_decoder_fuzzer.cc" ]
+    deps = [
+      ":blink_image_decoder_fuzzer_test_support",
+      ":platform",
+      "//third_party/rust/jxl/v0_6/wrapper:jxl_rs",
+    ]
+    seed_corpuses =
+        [ "//third_party/blink/web_tests/external/wpt/jpegxl/resources" ]
+    additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+  }
+
+  blink_fuzzer_test("blink_jxl_decoder_incremental_fuzzer") {
+    sources = [
+      "image-decoders/jxl/jxl_image_decoder_incremental_fuzzer.cc",
+    ]
     deps = [
       ":blink_image_decoder_fuzzer_test_support",
       ":platform",
@@ -2957,6 +2983,24 @@ blink_fuzzer_test("blink_png_decoder_fuzzer") {
   additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
 }
 
+blink_fuzzer_test("blink_png_decoder_incremental_fuzzer") {
+  sources = [
+    "image-decoders/png/png_image_decoder_incremental_fuzzer.cc",
+  ]
+  deps = [
+    ":blink_image_decoder_fuzzer_test_support",
+    ":platform",
+  ]
+  dict = "//testing/libfuzzer/fuzzers/dicts/png.dict"
+  seed_corpuses = [
+    "//components/test/data/viz",
+    "//third_party/blink/web_tests/images/png-suite/samples",
+    "//third_party/blink/web_tests/images/resources/pngfuzz",
+  ]
+
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+}
+
 blink_fuzzer_test("blink_jpeg_decoder_fuzzer") {
   sources = [ "image-decoders/jpeg/jpeg_image_decoder_fuzzer.cc" ]
   deps = [
@@ -2981,6 +3025,19 @@ blink_fuzzer_test("blink_bmp_decoder_fuzzer") {
 
 blink_fuzzer_test("blink_bmp_rust_decoder_fuzzer") {
   sources = [ "image-decoders/bmp/bmp_rust_image_decoder_fuzzer.cc" ]
+  deps = [
+    ":blink_image_decoder_fuzzer_test_support",
+    ":platform",
+  ]
+  seed_corpuses = [ "//third_party/blink/web_tests/images/bmp-suite/good" ]
+
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+}
+
+blink_fuzzer_test("blink_bmp_rust_decoder_incremental_fuzzer") {
+  sources = [
+    "image-decoders/bmp/bmp_rust_image_decoder_incremental_fuzzer.cc",
+  ]
   deps = [
     ":blink_image_decoder_fuzzer_test_support",
     ":platform",
