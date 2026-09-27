@@ -246,6 +246,15 @@ void ScriptToolHost::OnToolInvokedInOldDocument(mojom::ActionResultPtr result) {
 
   CHECK(web_contents());
 
+  if (result && result->code == mojom::ActionResultCode::kOk &&
+      !result->script_tool_response) {
+    mojo::ReportBadMessage(
+        "ScriptToolHost: kOk result without script_tool_response");
+    PostErrorResult(std::move(tool_done_callback_),
+                    mojom::ActionResultCode::kScriptToolInvocationFailed);
+    return;
+  }
+
   if (result && result->code == mojom::ActionResultCode::kOk) {
     result->requires_page_stabilization =
         base::FeatureList::IsEnabled(kActorScriptToolDelayObservation);
