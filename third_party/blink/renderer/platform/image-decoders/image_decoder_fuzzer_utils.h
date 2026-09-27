@@ -28,5 +28,7 @@ std::unique_ptr<ImageDecoder> CreateImageDecoder(DecoderType decoder_type,
 
 void FuzzDecoder(DecoderType decoder_type, FuzzedDataProvider& fdp);
 
+void FuzzIncrementalDecoder(DecoderType decoder_type, FuzzedDataProvider& fdp);
+
 }  // namespace blink
 #endif  // THIRD_PARTY_BLINK_RENDERER_PLATFORM_IMAGE_DECODERS_IMAGE_DECODER_FUZZER_UTILS_H_
