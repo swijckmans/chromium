@@ -343,6 +343,14 @@ void ModelContextUserData::ExecuteRemoteScriptTool(
     return;
   }
 
+  // A document that hosts tools always binds `model_context_remote_` when its
+  // `ModelContextHost` is bound, so an unbound remote means the target renderer
+  // never completed the handshake and cannot run the tool.
+  if (!target_data->model_context_remote_.is_bound()) {
+    std::move(callback).Run(std::nullopt, false);
+    return;
+  }
+
   // At this point, it is safe to invoke the tool in the target renderer pointed
   // to by `target_data`.
   ModelContextPageUserData* page_data =
@@ -469,6 +477,9 @@ void ModelContextPageUserData::SendCancelScriptToolToTarget(
   CHECK(target_rfh);
   auto* target_data = ModelContextUserData::GetForCurrentDocument(target_rfh);
   CHECK(target_data);
+  if (!target_data->model_context_remote_.is_bound()) {
+    return;
+  }
   target_data->model_context_remote_->CancelScriptTool(invocation_id);
 }
 
