@@ -1,0 +1,3 @@
+HTTP/1.1 200 OK
+No-Vary-Search: key-order, params, except=("x")
+

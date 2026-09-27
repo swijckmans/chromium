@@ -1,0 +1,3 @@
+HTTP/1.1 200 OK
+Integrity-Policy: blocked-destinations=(script), sources=(inline), endpoints=(e)
+

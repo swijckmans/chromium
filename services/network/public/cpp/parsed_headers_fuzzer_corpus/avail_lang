@@ -1,0 +1,4 @@
+HTTP/1.1 200 OK
+Avail-Language: en, fr;d=1, zz
+Content-Language: en-US, de
+

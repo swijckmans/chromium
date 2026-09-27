@@ -1,0 +1,3 @@
+HTTP/1.1 200 OK
+Document-Isolation-Policy: isolate-and-require-corp; report-to="e"
+

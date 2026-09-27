@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+No-Vary-Search: params, except=("a")
+Link: </a>; rel=preload; as=script
+Integrity-Policy: blocked-destinations=(script)
+Cookie-Indices: ("a")
+Supports-Loading-Mode: fenced-frame
+Cross-Origin-Opener-Policy: same-origin
+Content-Security-Policy: default-src 'self'
+

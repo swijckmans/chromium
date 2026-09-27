@@ -1,0 +1,3 @@
+HTTP/1.1 200 OK
+Reporting-Endpoints: e="https://example.test/r", f="/rel"
+
