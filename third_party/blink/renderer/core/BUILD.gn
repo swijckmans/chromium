@@ -1902,6 +1902,28 @@ test("css_parser_fuzzer") {
   configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
+blink_fuzzer_test("vtt_parser_fuzzer") {
+  sources = [
+    "$root_gen_dir/third_party/blink/renderer/bindings/core/v8/v8_vtt_region.cc",
+    "css/style_change_reason.cc",
+    "html/track/vtt/buffered_line_reader.cc",
+    "html/track/vtt/vtt_cue.cc",
+    "html/track/vtt/vtt_cue_box.cc",
+    "html/track/vtt/vtt_cue_layout_algorithm.cc",
+    "html/track/vtt/vtt_element.cc",
+    "html/track/vtt/vtt_parser.cc",
+    "html/track/vtt/vtt_parser_fuzzer.cc",
+    "html/track/vtt/vtt_region.cc",
+    "html/track/vtt/vtt_scanner.cc",
+    "html/track/vtt/vtt_tokenizer.cc",
+  ]
+  deps = [
+    ":core",
+    "//third_party/blink/renderer/platform:blink_fuzzer_test_support",
+  ]
+  seed_corpus = "//third_party/blink/renderer/core/html/track/vtt/vtt_parser_fuzzer_corpus"
+}
+
 test("html_permission_element_fuzzer") {
   sources =
       [ "html/fuzzers/permission_element/html_permission_element_fuzzer.cc" ]

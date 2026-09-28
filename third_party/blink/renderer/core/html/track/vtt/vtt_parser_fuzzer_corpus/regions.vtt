@@ -1,0 +1,12 @@
+WEBVTT
+
+REGION
+id:chat
+width:50%
+lines:3
+regionanchor:0%,100%
+viewportanchor:0%,90%
+scroll:up
+
+00:00.000 --> 00:02.000 region:chat
+hello region
