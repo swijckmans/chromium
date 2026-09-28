@@ -635,6 +635,9 @@ std::unique_ptr<AccessibilityStructureElement> PDFiumPage::GetStructureTree() {
   for (int i = 0; i < tree_children_count; ++i) {
     FPDF_STRUCTELEMENT tree_child =
         FPDF_StructTree_GetChildAtIndex(structure_tree.get(), i);
+    if (!tree_child) {
+      continue;
+    }
     tree_root->children[i] = GetStructureSubtree(tree_child, visited_elements);
     if (tree_root->children[i]) {
       tree_root->children[i]->parent = tree_root.get();
