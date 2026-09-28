@@ -1994,6 +1994,16 @@ blink_fuzzer_test("blink_html_tokenizer_fuzzer") {
   deps = [ ":core" ]
 }
 
+# Fuzzer for speculation rules parsing and document-rule matching.
+blink_fuzzer_test("blink_speculation_rule_set_fuzzer") {
+  sources = [ "speculation_rules/speculation_rule_set_fuzzer.cc" ]
+  seed_corpus = "//third_party/blink/renderer/core/speculation_rules/fuzzer_corpus"
+  deps = [
+    ":core",
+    ":testing",
+  ]
+}
+
 # Fuzzer for SVG path string parsing
 blink_fuzzer_test("svg_path_parser_fuzzer") {
   sources = [ "svg/svg_path_parser_fuzzer.cc" ]
