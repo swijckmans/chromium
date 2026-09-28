@@ -1075,6 +1075,20 @@ TEST_P(PDFiumPageTextFieldTest, PopulateTextFields) {
   }
 }
 
+TEST_P(PDFiumPageTextFieldTest, PopulateTextFieldsSkipsNullAnnotation) {
+  TestClient client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine = InitializeEngine(
+      &client, FILE_PATH_LITERAL("annotation_array_with_null_entry.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(1, engine->GetNumberOfPages());
+
+  PDFiumPage& page = GetPDFiumPage(*engine, 0);
+  std::vector<AccessibilityTextFieldInfo> text_fields =
+      page.GetTextFieldInfo();
+  ASSERT_EQ(1u, text_fields.size());
+  EXPECT_EQ("ValidField", text_fields[0].name);
+}
+
 INSTANTIATE_TEST_SUITE_P(All, PDFiumPageTextFieldTest, testing::Bool());
 
 using PDFiumPageChoiceFieldTest = PDFiumTestBase;
