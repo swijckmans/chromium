@@ -1,0 +1,7 @@
+WEBVTT
+
+STYLE
+::cue(.red) { color: red; background: rgba(0, 0, 0, .5); }
+
+00:00.000 --> 00:01.000
+<c.red>styled cue</c>
