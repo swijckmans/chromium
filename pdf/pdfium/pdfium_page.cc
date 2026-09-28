@@ -1736,7 +1736,9 @@ void PDFiumPage::PopulateAnnotations() {
   int annotation_count = FPDFPage_GetAnnotCount(page);
   for (int i = 0; i < annotation_count; ++i) {
     ScopedFPDFAnnotation annot(FPDFPage_GetAnnot(page, i));
-    DCHECK(annot);
+    if (!annot) {
+      continue;
+    }
     FPDF_ANNOTATION_SUBTYPE subtype = FPDFAnnot_GetSubtype(annot.get());
 
     switch (subtype) {

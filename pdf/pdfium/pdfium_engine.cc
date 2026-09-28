@@ -2740,6 +2740,9 @@ void PDFiumEngine::SearchUsingICU(const std::u16string& term,
     int term_removed_count =
         std::distance(removed_indices_begin, removed_indices_end);
     int page_text_result_length = result.length + term_removed_count;
+    if (page_text_result_length <= 0) {
+      continue;
+    }
 
     // Need to map the indexes from the page text, which may have generated
     // characters like space etc, to character indices from the page.
@@ -2760,8 +2763,9 @@ void PDFiumEngine::SearchUsingICU(const std::u16string& term,
       DCHECK_EQ(-1, char_end);
       char_end = original_char_count;
     }
+    // ICU collation matches can have a different length than the search term.
     DCHECK_GT(char_end, char_start);
-    DCHECK_LE(term.size() + term_removed_count,
+    DCHECK_LE(static_cast<size_t>(page_text_result_length),
               static_cast<size_t>(char_end - char_start));
     add_result_callback.Run(
         PDFiumRange(page, char_start, char_end - char_start));

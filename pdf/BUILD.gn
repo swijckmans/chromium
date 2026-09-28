@@ -101,7 +101,10 @@ if (enable_pdf) {
   }
 
   source_set("internal") {
-    visibility = [ ":*" ]
+    visibility = [
+      ":*",
+      "//pdf/pdfium/fuzzers:*",
+    ]
 
     sources = [
       "accessibility.cc",
