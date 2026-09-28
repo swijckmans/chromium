@@ -22,7 +22,9 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_timeouts.h"
+#include "base/time/time.h"
 #include "pdf/accessibility.h"
+#include "pdf/buildflags.h"
 #include "pdf/pdf_features.h"
 #include "pdf/loader/url_loader.h"
 #include "pdf/pdfium/pdfium_engine.h"
@@ -30,6 +32,7 @@
 #include "pdf/pdfium/pdfium_page.h"
 #include "pdf/test/test_client.h"
 #include "pdf/test/test_document_loader.h"
+#include "pdf/test/test_helpers.h"
 #include "pdf/text_search.h"
 #include "third_party/blink/public/common/input/web_keyboard_event.h"
 #include "third_party/blink/public/common/input/web_mouse_event.h"
@@ -50,6 +53,9 @@ class FuzzerEnvironment {
     TestTimeouts::Initialize();
     task_environment_ = std::make_unique<base::test::TaskEnvironment>(
         base::test::TaskEnvironment::MainThreadType::IO);
+#if BUILDFLAG(ENABLE_PDF_INK2)
+    pdf_ink_features_.InitAndEnableFeature(chrome_pdf::features::kPdfInk2);
+#endif
     chrome_pdf::InitializeSDK(/*enable_v8=*/false, /*use_skia=*/false,
                               chrome_pdf::FontMappingMode::kNoMapping);
   }
@@ -64,6 +70,9 @@ class FuzzerEnvironment {
  private:
   base::AtExitManager at_exit_manager_;
   std::unique_ptr<base::test::TaskEnvironment> task_environment_;
+#if BUILDFLAG(ENABLE_PDF_INK2)
+  base::test::ScopedFeatureList pdf_ink_features_;
+#endif
 };
 
 FuzzerEnvironment& GetFuzzerEnvironment() {
@@ -234,6 +243,38 @@ void ExerciseSelection(chrome_pdf::PDFiumEngine* engine) {
   engine->GetSelectionRectMap();
 }
 
+#if BUILDFLAG(ENABLE_PDF_INK2)
+void ExerciseInkAnnotations(chrome_pdf::PDFiumEngine* engine) {
+  engine->ScanForInkAnnotations(base::Milliseconds(100));
+  // Match the production order: entering annotation mode loads V2 ink paths
+  // for every page before `getAllTextAnnotations` loads text annotations.
+  const int page_count = std::min(engine->GetNumberOfPages(), 4);
+  for (int i = 0; i < page_count; ++i) {
+    engine->LoadV2InkPathsForPage(i);
+  }
+  engine->LoadTextAnnotationsFromPdf();
+}
+#endif
+
+void ExercisePrintAndSave(chrome_pdf::PDFiumEngine* engine,
+                          FuzzedDataProvider& provider) {
+  const int page_count = std::min(engine->GetNumberOfPages(), 2);
+  if (page_count <= 0) {
+    return;
+  }
+  std::vector<int> page_indices;
+  for (int i = 0; i < page_count; ++i) {
+    page_indices.push_back(i);
+  }
+
+  blink::WebPrintParams print_params = chrome_pdf::GetDefaultPrintParams();
+  print_params.rasterize_pdf = provider.ConsumeBool();
+
+  engine->PrintBegin();
+  engine->PrintPages(page_indices, print_params);
+  engine->PrintEnd();
+}
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -300,6 +341,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   ExerciseAccessibility(engine.get(), enable_pdf_tags);
   ExerciseDocumentInfo(engine.get(), action_provider);
   ExerciseFormInput(engine.get(), action_provider);
+#if BUILDFLAG(ENABLE_PDF_INK2)
+  ExerciseInkAnnotations(engine.get());
+#endif
+  if (action_provider.ConsumeBool()) {
+    ExercisePrintAndSave(engine.get(), action_provider);
+  }
+  if (action_provider.ConsumeBool()) {
+    engine->GetSaveData();
+  }
   environment.RunUntilIdle();
 
   client.set_engine(nullptr);
