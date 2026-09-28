@@ -18,6 +18,7 @@
 #include "build/build_config.h"
 #include "pdf/accessibility_structs.h"
 #include "pdf/buildflags.h"
+#include "pdf/pdf_features.h"
 #include "pdf/pdfium/pdfium_engine.h"
 #include "pdf/pdfium/pdfium_test_base.h"
 #include "pdf/test/test_client.h"
@@ -379,6 +380,29 @@ TEST_P(PDFiumPageTest, GetBoundingBoxRotatedMultipageCropped) {
 }
 
 INSTANTIATE_TEST_SUITE_P(All, PDFiumPageTest, testing::Bool());
+
+using PDFiumPageStructureTreeTest = PDFiumTestBase;
+
+TEST_P(PDFiumPageStructureTreeTest, SkipsNullTopLevelKid) {
+  base::test::ScopedFeatureList pdf_tags;
+  pdf_tags.InitAndEnableFeature(features::kPdfTags);
+
+  TestClient client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine = InitializeEngine(
+      &client, FILE_PATH_LITERAL("struct_tree_root_kid_not_on_page.pdf"));
+  ASSERT_TRUE(engine);
+  ASSERT_EQ(1, engine->GetNumberOfPages());
+
+  std::unique_ptr<AccessibilityStructureElement> structure_tree =
+      GetPDFiumPage(*engine, 0).GetStructureTree();
+  ASSERT_TRUE(structure_tree);
+  ASSERT_EQ(2u, structure_tree->children.size());
+  ASSERT_TRUE(structure_tree->children[0]);
+  EXPECT_EQ(PdfTagType::kP, structure_tree->children[0]->type);
+  EXPECT_FALSE(structure_tree->children[1]);
+}
+
+INSTANTIATE_TEST_SUITE_P(All, PDFiumPageStructureTreeTest, testing::Bool());
 
 class PDFiumPageLinkTest : public PDFiumTestBase {
  public:
