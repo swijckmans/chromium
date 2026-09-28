@@ -244,8 +244,7 @@ void ExerciseSelection(chrome_pdf::PDFiumEngine* engine) {
 }
 
 #if BUILDFLAG(ENABLE_PDF_INK2)
-void ExerciseInkAnnotations(chrome_pdf::PDFiumEngine* engine,
-                            FuzzedDataProvider& provider) {
+void ExerciseInkAnnotations(chrome_pdf::PDFiumEngine* engine) {
   engine->ScanForInkAnnotations(base::Milliseconds(100));
   engine->LoadTextAnnotationsFromPdf();
   const int page_count = std::min(engine->GetNumberOfPages(), 4);
@@ -341,9 +340,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   ExerciseDocumentInfo(engine.get(), action_provider);
   ExerciseFormInput(engine.get(), action_provider);
 #if BUILDFLAG(ENABLE_PDF_INK2)
-  if (action_provider.ConsumeBool()) {
-    ExerciseInkAnnotations(engine.get(), action_provider);
-  }
+  ExerciseInkAnnotations(engine.get());
 #endif
   if (action_provider.ConsumeBool()) {
     ExercisePrintAndSave(engine.get(), action_provider);

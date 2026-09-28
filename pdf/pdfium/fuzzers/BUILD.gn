@@ -96,6 +96,7 @@ fuzzer_test("pdfium_text_fragment_fuzzer") {
     "initialize_process.cc",
     "pdfium_text_fragment_fuzzer.cc",
   ]
+  dict = "dicts/pdf_viewer_glue.dict"
   seed_corpus = "corpora/pdfium_text_fragment_fuzzer"
   deps = [
     "//base",
