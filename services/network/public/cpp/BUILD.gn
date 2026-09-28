@@ -952,6 +952,21 @@ fuzzer_test("client_hints_fuzzer") {
   ]
 }
 
+fuzzer_test("sri_message_signatures_fuzzer") {
+  sources = [ "sri_message_signatures_fuzzer.cc" ]
+  deps = [
+    ":cpp",
+    "//base",
+    "//base:i18n",
+    "//net",
+    "//net:test_support",
+    "//services/network/public/mojom:url_loader_base",
+    "//url",
+  ]
+  seed_corpus =
+      "//services/network/public/cpp/sri_message_signatures_fuzzer_corpus"
+}
+
 fuzzer_test("avail_language_header_fuzzer") {
   sources = [ "avail_language_header_fuzzer.cc" ]
   deps = [

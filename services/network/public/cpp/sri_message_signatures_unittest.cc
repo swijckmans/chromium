@@ -678,6 +678,22 @@ TEST_F(SRIMessageSignatureParserTest, ValidComponents) {
   }
 }
 
+TEST_F(SRIMessageSignatureParserTest, EmptyComponentName) {
+  const char* input =
+      "signature=(\"unencoded-digest\";sf \"\";req);keyid=\"JrQLj5P/"
+      "89iXES9+vFgrIy29clF9CC/oPPsw3c5D0bs=\";tag=\"sri\"";
+  scoped_refptr<net::HttpResponseHeaders> headers =
+      GetHeaders(kValidSignatureHeader, input);
+  mojom::SRIMessageSignaturesPtr result =
+      ParseSRIMessageSignaturesFromHeaders(*headers);
+
+  EXPECT_EQ(0u, result->signatures.size());
+  ASSERT_EQ(2u, result->issues.size());
+  EXPECT_EQ(
+      mojom::SRIMessageSignatureError::kSignatureInputHeaderInvalidComponentName,
+      result->issues[0]->error);
+}
+
 TEST_F(SRIMessageSignatureParserTest, Created) {
   const char* cases[] = {
       "0",
