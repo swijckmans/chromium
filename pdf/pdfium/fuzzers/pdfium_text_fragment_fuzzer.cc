@@ -246,11 +246,13 @@ void ExerciseSelection(chrome_pdf::PDFiumEngine* engine) {
 #if BUILDFLAG(ENABLE_PDF_INK2)
 void ExerciseInkAnnotations(chrome_pdf::PDFiumEngine* engine) {
   engine->ScanForInkAnnotations(base::Milliseconds(100));
-  engine->LoadTextAnnotationsFromPdf();
+  // Match the production order: entering annotation mode loads V2 ink paths
+  // for every page before `getAllTextAnnotations` loads text annotations.
   const int page_count = std::min(engine->GetNumberOfPages(), 4);
   for (int i = 0; i < page_count; ++i) {
     engine->LoadV2InkPathsForPage(i);
   }
+  engine->LoadTextAnnotationsFromPdf();
 }
 #endif
 
