@@ -49,6 +49,7 @@ group("pdf_fuzzers") {
     ":pdf_streamparser_fuzzer",
     ":pdf_xml_fuzzer",
     ":pdfium_fuzzer",
+    ":pdfium_text_fragment_fuzzer",
   ]
   if (pdf_enable_v8) {
     deps += [
@@ -88,6 +89,25 @@ group("pdf_fuzzers") {
       ]
     }
   }
+}
+
+fuzzer_test("pdfium_text_fragment_fuzzer") {
+  sources = [
+    "initialize_process.cc",
+    "pdfium_text_fragment_fuzzer.cc",
+  ]
+  seed_corpus = "corpora/pdfium_text_fragment_fuzzer"
+  deps = [
+    "//base",
+    "//base/test:test_support",
+    "//pdf:buildflags",
+    "//pdf:features",
+    "//pdf:internal",
+    "//pdf:pdf_test_utils",
+    "//pdf:structs",
+    "//third_party/pdfium",
+    "//ui/gfx/geometry",
+  ]
 }
 
 pdfium_fuzzer_test("pdfium_fuzzer") {
