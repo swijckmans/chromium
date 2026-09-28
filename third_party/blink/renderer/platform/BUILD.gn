@@ -2815,6 +2815,16 @@ blink_fuzzer_test("segmented_string_fuzzer") {
   additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
 }
 
+blink_fuzzer_test("blink_loader_header_fuzzer") {
+  sources = [ "loader/loader_header_fuzzer.cc" ]
+  seed_corpus = "loader/fuzzer_corpus"
+  deps = [
+    ":platform",
+    ":runtime_enabled_features",
+  ]
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+}
+
 # Fuzzer for blink::FindCategory.
 blink_fuzzer_test("mathml_operator_dictionary_fuzzer") {
   sources = [ "text/mathml_operator_dictionary_fuzzer.cc" ]
