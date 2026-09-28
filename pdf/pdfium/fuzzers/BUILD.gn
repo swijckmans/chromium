@@ -106,6 +106,7 @@ fuzzer_test("pdfium_text_fragment_fuzzer") {
     "//pdf:pdf_test_utils",
     "//pdf:structs",
     "//third_party/pdfium",
+    "//ui/events",
     "//ui/gfx/geometry",
   ]
 }
