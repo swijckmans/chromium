@@ -3859,6 +3859,24 @@ if (use_fuzzing_engine) {
   }
 }
 
+if (enable_device_bound_sessions && use_fuzzing_engine) {
+  fuzzer_test("net_device_bound_sessions_fuzzer") {
+    sources = [
+      "device_bound_sessions/device_bound_sessions_fuzzer.cc",
+      "device_bound_sessions/session_json_utils.cc",
+    ]
+    deps = [
+      ":device_bound_sessions_storage_proto",
+      ":net",
+      ":net_fuzzer_test_support",
+      ":test_support",
+      "//base",
+      "//url",
+    ]
+    seed_corpus = "data/fuzzer_data/net_device_bound_sessions_fuzzer/"
+  }
+}
+
 if (enable_websockets && use_fuzzing_engine) {
   fuzzer_test("net_http_server_fuzzer") {
     sources = [ "//net/server/http_server_fuzzer.cc" ]
