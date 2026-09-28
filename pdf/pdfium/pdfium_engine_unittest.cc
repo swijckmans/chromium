@@ -5754,13 +5754,19 @@ class PDFiumEngineHighlightTextFragmentTest
  public:
   static constexpr gfx::Size kSpannerExpectedVisiblePageSize{816, 1056};
 
-  std::unique_ptr<PDFiumEngine> InitializePdfEngine(TestClient& client) {
+  std::unique_ptr<PDFiumEngine> InitializePdfEngine(
+      TestClient& client,
+      const base::FilePath::CharType* pdf_name) {
     std::unique_ptr<PDFiumEngine> engine =
-        InitializeEngine(&client, FILE_PATH_LITERAL("spanner.pdf"));
+        InitializeEngine(&client, pdf_name);
     // Update the plugin size so that all the text is visible by
     // `HighlightChangeInvalidator`.
     engine->PluginSizeUpdated({821, 1059});
     return engine;
+  }
+
+  std::unique_ptr<PDFiumEngine> InitializePdfEngine(TestClient& client) {
+    return InitializePdfEngine(client, FILE_PATH_LITERAL("spanner.pdf"));
   }
 };
 
@@ -5882,6 +5888,16 @@ TEST_P(PDFiumEngineHighlightTextFragmentTest, FragmentNotInPDF) {
 
   engine->FindAndHighlightTextFragments({"applications,old,-random"});
   DrawAndExpectBlank(*engine, 0, kSpannerExpectedVisiblePageSize);
+}
+
+TEST_P(PDFiumEngineHighlightTextFragmentTest, ZeroLengthMatchIsIgnored) {
+  NiceMock<SearchStringTestClient> client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine = InitializePdfEngine(
+      client, FILE_PATH_LITERAL("pdfium_text_fragment_zero_length_match.pdf"));
+  ASSERT_TRUE(engine);
+
+  const std::string fragment(1, '\0');
+  EXPECT_FALSE(engine->FindAndHighlightTextFragments({fragment}));
 }
 
 // Assert that the second highlight should clear the existing highlight.
