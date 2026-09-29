@@ -145,6 +145,7 @@ class CORE_EXPORT Sanitizer final : public ScriptWrappable {
   void setFrom(const Sanitizer&);
 
   FRIEND_TEST_ALL_PREFIXES(SanitizerTest, SvgSetWithMultipleColons);
+  FRIEND_TEST_ALL_PREFIXES(SanitizerTest, DoesNotSanitizeUserAgentShadowRoots);
 
  private:
   enum class SanitizerBoolWithAbsence { kAbsent, kTrue, kFalse };

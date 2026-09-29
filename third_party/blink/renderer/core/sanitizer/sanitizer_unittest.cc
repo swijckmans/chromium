@@ -54,7 +54,10 @@ TEST_P(SanitizerTest, SvgSetWithMultipleColons) {
     String result = GetDocument().body()->GetInnerHTMLString();
     EXPECT_FALSE(result.contains("attributeName"));
   }
+}
 
+TEST_P(SanitizerTest, DoesNotSanitizeUserAgentShadowRoots) {
+  // User-agent shadow trees are internal and must not be sanitized.
   SetBodyInnerHTML("<select><option>y</option></select>");
   auto* select = To<HTMLSelectElement>(
       GetDocument().QuerySelector(AtomicString("select")));
@@ -65,8 +68,8 @@ TEST_P(SanitizerTest, SvgSetWithMultipleColons) {
       user_agent_shadow_root->CountChildren();
 
   Sanitizer* sanitizer = Sanitizer::CreateEmpty();
-  sanitizer->AllowElement(html_names::kSelectTag);
-  sanitizer->AllowElement(html_names::kOptionTag);
+  sanitizer->RemoveElement(html_names::kDivTag);
+  sanitizer->RemoveElement(html_names::kSlotTag);
   sanitizer->Sanitize(GetDocument().body(), Sanitizer::Mode::kSafe);
 
   EXPECT_EQ(user_agent_child_count, user_agent_shadow_root->CountChildren());
