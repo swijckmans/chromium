@@ -81,6 +81,18 @@ TEST_F(FileTypePoliciesTest, UnpackResourceBundle) {
             file_type.platform_settings(0).auto_open_hint());
 #endif
 
+#if BUILDFLAG(IS_WIN)
+  const base::FilePath windows_dangerous_files[] = {
+      FILE_PATH_LITERAL("a.rdp"),       FILE_PATH_LITERAL("a.theme"),
+      FILE_PATH_LITERAL("a.themepack"), FILE_PATH_LITERAL("a.deskthemepack"),
+      FILE_PATH_LITERAL("a.wsb"),       FILE_PATH_LITERAL("a.appinstaller")};
+  for (const base::FilePath& file : windows_dangerous_files) {
+    EXPECT_EQ(DownloadFileType::ALLOW_ON_USER_GESTURE,
+              policies_.GetFileDangerLevel(file, GURL{}, nullptr));
+    EXPECT_FALSE(policies_.IsAllowedToOpenAutomatically(file));
+  }
+#endif
+
   // Lookup .class that varies on OS_CHROMEOS, and also has a
   // default setting set.
   base::FilePath class_file(FILE_PATH_LITERAL("foo.class"));

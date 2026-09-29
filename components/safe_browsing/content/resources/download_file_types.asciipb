@@ -8,7 +8,7 @@
 ##
 ## Top level settings
 ##
-version_id: 69
+version_id: 70
 sampled_ping_probability: 0.01
 max_archived_binaries_to_report: 10
 default_file_type {
@@ -2680,6 +2680,76 @@ file_types {
   # Allows invoking any binary file with any parameters.
   extension: "settingcontent-ms"
   uma_value: 316
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
+  # MSIX App Installer manifest. Opening launches App Installer with an
+  # attacker-chosen package URL.
+  extension: "appinstaller"
+  uma_value: 423
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
+  # Windows desktop theme pack (cab); see "theme".
+  extension: "deskthemepack"
+  uma_value: 421
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
+  # Remote Desktop connection file. Opening launches mstsc with attacker-
+  # chosen server, credentials prompt and drive/clipboard redirection.
+  extension: "rdp"
+  uma_value: 418
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
+  # Windows theme. Can reference a remote UNC path, leaking NTLM credentials
+  # on open.
+  extension: "theme"
+  uma_value: 419
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
+  # Windows theme pack (cab); see "theme".
+  extension: "themepack"
+  uma_value: 420
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
+  # Windows Sandbox configuration. LogonCommand runs an arbitrary command on
+  # open, with host folder mapping.
+  extension: "wsb"
+  uma_value: 422
   ping_setting: FULL_PING
   platform_settings {
     platform: PLATFORM_TYPE_WINDOWS
