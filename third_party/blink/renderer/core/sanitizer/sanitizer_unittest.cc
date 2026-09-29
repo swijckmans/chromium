@@ -8,7 +8,10 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
+#include "third_party/blink/renderer/core/dom/shadow_root.h"
+#include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
@@ -51,6 +54,25 @@ TEST_P(SanitizerTest, SvgSetWithMultipleColons) {
     String result = GetDocument().body()->GetInnerHTMLString();
     EXPECT_FALSE(result.contains("attributeName"));
   }
+
+  SetBodyInnerHTML("<select><option>y</option></select>");
+  auto* select = To<HTMLSelectElement>(
+      GetDocument().QuerySelector(AtomicString("select")));
+  ASSERT_TRUE(select);
+  ShadowRoot* user_agent_shadow_root = select->UserAgentShadowRoot();
+  ASSERT_TRUE(user_agent_shadow_root);
+  const unsigned user_agent_child_count =
+      user_agent_shadow_root->CountChildren();
+
+  Sanitizer* sanitizer = Sanitizer::CreateEmpty();
+  sanitizer->AllowElement(html_names::kSelectTag);
+  sanitizer->AllowElement(html_names::kOptionTag);
+  sanitizer->Sanitize(GetDocument().body(), Sanitizer::Mode::kSafe);
+
+  EXPECT_EQ(user_agent_child_count, user_agent_shadow_root->CountChildren());
+  ASSERT_TRUE(select->InnerElement().firstChild());
+  ASSERT_TRUE(select->firstChild());
+  select->RemoveChild(select->firstChild());
 }
 
 }  // namespace blink

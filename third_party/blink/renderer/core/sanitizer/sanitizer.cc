@@ -958,9 +958,10 @@ void Sanitizer::SanitizeTemplate(Node* node, Mode safe) const {
     }
   }
   // Step 1.5.6: Recurse into shadow.
-  if (node->GetShadowRoot()) {
-    Node* shadow_root = &node->GetShadowRoot()->RootNode();
-    CHECK(shadow_root);
+  // User-agent shadow trees are internal to the element and are not part of
+  // the content being sanitized.
+  if (ShadowRoot* shadow_root = node->GetShadowRoot();
+      shadow_root && !shadow_root->IsUserAgent()) {
     Sanitize(shadow_root, safe);
   }
 }
