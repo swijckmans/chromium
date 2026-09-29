@@ -6,6 +6,7 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
@@ -39,9 +40,12 @@ PermissionPromptBubble::~PermissionPromptBubble() {
 }
 
 void PermissionPromptBubble::ShowBubble() {
+  // Dropping fullscreen can run nested message loops during which the prompt
+  // may be torn down (e.g. a navigation finishes), so re-check `this`.
+  base::WeakPtr<PermissionPromptBubble> weak_this = weak_factory_.GetWeakPtr();
   auto blocker =
       web_contents()->ForSecurityDropFullscreen(display::kInvalidDisplayId);
-  if (!blocker) {
+  if (!blocker || !weak_this) {
     return;
   }
   fullscreen_blocker_ = std::move(*blocker);

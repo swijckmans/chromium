@@ -72,6 +72,7 @@
 #include "components/split_tabs/split_tab_id.h"
 #include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -1363,19 +1364,26 @@ void BrowserWebContentsDelegate::RegisterProtocolHandler(
 
   permissions::PermissionRequestManager* permission_request_manager =
       permissions::PermissionRequestManager::FromWebContents(web_contents);
-  if (permission_request_manager) {
-    auto blocker = web_contents->ForSecurityDropFullscreen(
-        /*display_id=*/display::kInvalidDisplayId);
-    if (!blocker) {
-      return;
-    }
-
-    permission_request_manager->AddRequest(
-        requesting_frame,
-        std::make_unique<
-            custom_handlers::RegisterProtocolHandlerPermissionRequest>(
-            registry, handler, url, std::move(*blocker)));
+  if (!permission_request_manager) {
+    return;
   }
+
+  // Dropping fullscreen can run nested message loops during which the
+  // requesting frame may be detached. Re-resolve and re-validate it.
+  const content::GlobalRenderFrameHostId requesting_frame_id =
+      requesting_frame->GetGlobalId();
+  auto blocker = web_contents->ForSecurityDropFullscreen(
+      /*display_id=*/display::kInvalidDisplayId);
+  requesting_frame = content::RenderFrameHost::FromID(requesting_frame_id);
+  if (!blocker || !requesting_frame || !requesting_frame->IsActive()) {
+    return;
+  }
+
+  permission_request_manager->AddRequest(
+      requesting_frame,
+      std::make_unique<
+          custom_handlers::RegisterProtocolHandlerPermissionRequest>(
+          registry, handler, url, std::move(*blocker)));
 }
 
 void BrowserWebContentsDelegate::UnregisterProtocolHandler(
