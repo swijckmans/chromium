@@ -83,9 +83,13 @@ TEST_F(FileTypePoliciesTest, UnpackResourceBundle) {
 
 #if BUILDFLAG(IS_WIN)
   const base::FilePath windows_dangerous_files[] = {
-      FILE_PATH_LITERAL("a.rdp"),       FILE_PATH_LITERAL("a.theme"),
-      FILE_PATH_LITERAL("a.themepack"), FILE_PATH_LITERAL("a.deskthemepack"),
-      FILE_PATH_LITERAL("a.wsb"),       FILE_PATH_LITERAL("a.appinstaller")};
+      FILE_PATH_LITERAL("a.rdp"),
+      FILE_PATH_LITERAL("a.theme"),
+      FILE_PATH_LITERAL("a.themepack"),
+      FILE_PATH_LITERAL("a.deskthemepack"),
+      FILE_PATH_LITERAL("a.wsb"),
+      FILE_PATH_LITERAL("a.appinstaller"),
+      FILE_PATH_LITERAL("a.searchconnector-ms")};
   for (const base::FilePath& file : windows_dangerous_files) {
     EXPECT_EQ(DownloadFileType::ALLOW_ON_USER_GESTURE,
               policies_.GetFileDangerLevel(file, GURL{}, nullptr));

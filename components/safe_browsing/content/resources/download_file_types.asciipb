@@ -2489,6 +2489,18 @@ file_types {
   }
 }
 file_types {
+  # Windows Search Connector definition. Parsed by the shell to resolve remote
+  # locations; NTLM disclosure on open (CVE-2026-21249 / ZDI-26-083).
+  extension: "searchconnector-ms"
+  uma_value: 424
+  ping_setting: FULL_PING
+  platform_settings {
+    platform: PLATFORM_TYPE_WINDOWS
+    danger_level: ALLOW_ON_USER_GESTURE
+    auto_open_hint: DISALLOW_AUTO_OPEN
+  }
+}
+file_types {
   # Shortcuts. May open anything.
   extension: "lnk"
   uma_value: 84

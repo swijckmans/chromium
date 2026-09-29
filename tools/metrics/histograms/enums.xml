@@ -25818,6 +25818,7 @@ Called by update_net_error_codes.py.-->
   <int value="421" label="DESKTHEMEPACK"/>
   <int value="422" label="WSB"/>
   <int value="423" label="APPINSTALLER"/>
+  <int value="424" label="SEARCHCONNECTOR-MS"/>
 </enum>
 
 <enum name="ScanFailureProgress">
