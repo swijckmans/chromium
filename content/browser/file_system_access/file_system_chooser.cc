@@ -388,11 +388,19 @@ bool FileSystemChooser::IsShellIntegratedExtension(
   // https://crbug.com/1227995, respectively). '.local' files are used by
   // Windows to determine which DLLs to load for an application. '.url' files
   // can be used to read arbirtary files (see https://crbug.com/1307930).
+  // '.website' files are Internet Explorer pinned-site shortcuts sharing the
+  // [InternetShortcut] IconFile handler with .url, so Explorer fetches the
+  // icon on folder view. .library-ms and .searchconnector-ms files are parsed
+  // by Explorer on folder view (CVE-2025-24054, CVE-2026-21249; see
+  // https://alittleinsecure.com/files-that-coerce-search-connectors-and-beyond/).
   // LINT.IfChange(ShellIntegratedExtensions)
   if ((extension_lower == FILE_PATH_LITERAL("lnk")) ||
       (extension_lower == FILE_PATH_LITERAL("local")) ||
       (extension_lower == FILE_PATH_LITERAL("scf")) ||
-      (extension_lower == FILE_PATH_LITERAL("url"))) {
+      (extension_lower == FILE_PATH_LITERAL("url")) ||
+      (extension_lower == FILE_PATH_LITERAL("website")) ||
+      (extension_lower == FILE_PATH_LITERAL("library-ms")) ||
+      (extension_lower == FILE_PATH_LITERAL("searchconnector-ms"))) {
     return true;
   }
   // LINT.ThenChange(//net/base/filename_util_internal.cc:ShellIntegratedExtensions)

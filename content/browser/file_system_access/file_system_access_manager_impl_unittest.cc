@@ -2621,6 +2621,9 @@ TEST_F(FileSystemAccessManagerImplTest, IsSafePathComponent) {
       "My Computer.{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
       "a.lnk",
       "a.url",
+      "a.website",
+      "a.library-ms",
+      "a.searchconnector-ms",
       "C:",
   };
 

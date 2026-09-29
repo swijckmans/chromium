@@ -225,8 +225,9 @@ TEST_F(FileSystemChooserTest, IgnoreShellIntegratedExtensions) {
   std::vector<blink::mojom::ChooseFileSystemEntryAcceptsOptionPtr> accepts;
   accepts.emplace_back(blink::mojom::ChooseFileSystemEntryAcceptsOption::New(
       u"", std::vector<std::string>({}),
-      std::vector<std::string>(
-          {"lnk", "foo.lnk", "foo.bar.local", "text", "local", "scf", "url"})));
+      std::vector<std::string>({"lnk", "foo.lnk", "foo.bar.local", "text",
+                                "local", "scf", "url", "website", "foo.website",
+                                "library-ms", "searchconnector-ms"})));
   SyncShowDialog(std::move(accepts),
                  /*include_accepts_all=*/false);
 

@@ -111,6 +111,9 @@ constexpr const base::FilePath::CharType* kUnsafePortableBasenames[] = {
     FILE_PATH_LITERAL("My Computer.{20D04FE0-3AEA-1069-A2D8-08002B30309D}"),
     FILE_PATH_LITERAL("harmless.scf"),
     FILE_PATH_LITERAL("harmless.url"),
+    FILE_PATH_LITERAL("harmless.website"),
+    FILE_PATH_LITERAL("harmless.library-ms"),
+    FILE_PATH_LITERAL("harmless.searchconnector-ms"),
 #if BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
     FILE_PATH_LITERAL("a\\a"),
 #endif
@@ -384,6 +387,10 @@ TEST(FilenameUtilTest, GenerateSafeFileName) {
       {__LINE__, "text/html", "harmless.lnk", "harmless.download"},
       {__LINE__, "text/html", "harmless.scf", "harmless.download"},
       {__LINE__, "text/html", "harmless.url", "harmless.download"},
+      {__LINE__, "text/html", "harmless.website", "harmless.download"},
+      {__LINE__, "text/html", "harmless.library-ms", "harmless.download"},
+      {__LINE__, "text/html", "harmless.searchconnector-ms",
+       "harmless.download"},
 #elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
       // On Posix, none of the above set is particularly dangerous.
       {__LINE__, "text/html", "con.htm", "con.htm"},
@@ -396,6 +403,10 @@ TEST(FilenameUtilTest, GenerateSafeFileName) {
       {__LINE__, "text/html", "harmless.lnk", "harmless.lnk"},
       {__LINE__, "text/html", "harmless.scf", "harmless.scf"},
       {__LINE__, "text/html", "harmless.url", "harmless.url"},
+      {__LINE__, "text/html", "harmless.website", "harmless.website"},
+      {__LINE__, "text/html", "harmless.library-ms", "harmless.library-ms"},
+      {__LINE__, "text/html", "harmless.searchconnector-ms",
+       "harmless.searchconnector-ms"},
 #endif  // BUILDFLAG(IS_WIN)
   };
 
