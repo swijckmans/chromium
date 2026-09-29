@@ -161,11 +161,17 @@ bool IsShellIntegratedExtension(const base::FilePath::StringType& extension) {
   // Windows to determine which DLLs to load for an application. .url files
   // can be used to leak credentials or read arbitrary files (see
   // https://crbug.com/1307930).
+  // .website files are Internet Explorer pinned-site shortcuts sharing the
+  // [InternetShortcut] IconFile handler with .url, so Explorer fetches the
+  // icon on folder view. .library-ms files are parsed by Explorer on folder
+  // view / selection (see CVE-2025-24054).
   // LINT.IfChange(ShellIntegratedExtensions)
   if ((extension_lower == FILE_PATH_LITERAL("local")) ||
       (extension_lower == FILE_PATH_LITERAL("lnk")) ||
       (extension_lower == FILE_PATH_LITERAL("scf")) ||
-      (extension_lower == FILE_PATH_LITERAL("url"))) {
+      (extension_lower == FILE_PATH_LITERAL("url")) ||
+      (extension_lower == FILE_PATH_LITERAL("website")) ||
+      (extension_lower == FILE_PATH_LITERAL("library-ms"))) {
     return true;
   }
   // LINT.ThenChange(//content/browser/file_system_access/file_system_chooser.cc:ShellIntegratedExtensions)
