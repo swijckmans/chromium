@@ -2413,10 +2413,14 @@ bool FileSystemAccessManagerImpl::IsSafePathComponent(
   // https://nvd.nist.gov/vuln/detail/CVE-2010-2568 and
   // https://crbug.com/1227995, respectively). '.url' files can be used to read
   // arbitrary files (see https://crbug.com/1307930 and
-  // https://crbug.com/1354518).
+  // https://crbug.com/1354518). '.website' shares the [InternetShortcut]
+  // IconFile handler with '.url'; '.library-ms' is parsed by Explorer on folder
+  // view (CVE-2025-24054).
   if (extension_lower == FILE_PATH_LITERAL("lnk") ||
       extension_lower == FILE_PATH_LITERAL("scf") ||
-      extension_lower == FILE_PATH_LITERAL("url")) {
+      extension_lower == FILE_PATH_LITERAL("url") ||
+      extension_lower == FILE_PATH_LITERAL("website") ||
+      extension_lower == FILE_PATH_LITERAL("library-ms")) {
     return false;
   }
 
