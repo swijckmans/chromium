@@ -333,6 +333,8 @@ bool ShouldUnescapeCodePoint(UnescapeRule::Type rules,
       // U+061C is already banned as a BiDi control character.
       code_point == 0x06DD ||  // ARABIC END OF AYAH          (%DB%9D)
       code_point == 0x070F ||  // SYRIAC ABBREVIATION MARK    (%DC%8F)
+      code_point == 0x0890 ||  // ARABIC POUND MARK ABOVE     (%E0%A2%90)
+      code_point == 0x0891 ||  // ARABIC PIASTRE MARK ABOVE   (%E0%A2%91)
       code_point == 0x08E2 ||  // ARABIC DISPUTED END OF AYAH (%E0%A3%A2)
       code_point == 0x115F ||  // HANGUL CHOSEONG FILLER      (%E1%85%9F)
       code_point == 0x1160 ||  // HANGUL JUNGSEONG FILLER     (%E1%85%A0)
@@ -345,6 +347,8 @@ bool ShouldUnescapeCodePoint(UnescapeRule::Type rules,
       code_point == 0x180D ||  // MONGOLIAN FREE VARIATION SELECTOR THREE
                                // (%E1%A0%8D)
       code_point == 0x180E ||  // MONGOLIAN VOWEL SEPARATOR   (%E1%A0%8E)
+      code_point == 0x180F ||  // MONGOLIAN FREE VARIATION SELECTOR FOUR
+                               // (%E1%A0%8F)
       code_point == 0x200B ||  // ZERO WIDTH SPACE            (%E2%80%8B)
       code_point == 0x200C ||  // ZERO WIDTH SPACE NON-JOINER (%E2%80%8C)
       code_point == 0x200D ||  // ZERO WIDTH JOINER           (%E2%80%8D)
@@ -370,8 +374,8 @@ bool ShouldUnescapeCodePoint(UnescapeRule::Type rules,
       code_point == 0xFFFB ||   // INTERLINEAR ANNOTATION TERMINATOR (%EF%BF%BB)
       code_point == 0x110BD ||  // KAITHI NUMBER SIGN       (%F0%91%82%BD)
       code_point == 0x110CD ||  // KAITHI NUMBER SIGN ABOVE (%F0%91%83%8D)
-      // Egyptian hieroglyph formatting (%F0%93%90%B0 -- %F0%93%90%B8)
-      (code_point >= 0x13430 && code_point <= 0x13438) ||
+      // Egyptian hieroglyph formatting (%F0%93%90%B0 -- %F0%93%90%BF)
+      (code_point >= 0x13430 && code_point <= 0x1343F) ||
       // Shorthand format controls (%F0%9B%B2%A0 -- %F0%9B%B2%A3)
       (code_point >= 0x1BCA0 && code_point <= 0x1BCA3) ||
       // Beams and slurs (%F0%9D%85%B3 -- %F0%9D%85%BA)
