@@ -4370,18 +4370,33 @@ void Element::MovedFrom(ContainerNode& old_parent) {
   }
 
   Element* focused_element = GetDocument().FocusedElement();
-  Element* new_parent_element = parentElement();
   Element* old_parent_element = &To<Element>(old_parent);
-  if (focused_element && old_parent.HasFocusWithin() &&
-      contains(focused_element) && old_parent != *new_parent_element) {
-    Element* common_ancestor = To<Element>(old_parent_element->CommonAncestor(
-        *new_parent_element, UserActionElementParent));
+  // The "focus within" flag propagates along the flat tree, so the element
+  // that gains it is the flat-tree parent rather than the DOM parent. These
+  // differ when the node was moved into a shadow root, in which case the
+  // shadow host is the element that gains the flag, and `parentElement()`
+  // would be null.
+  Element* new_parent_element = FlatTreeTraversal::ParentElement(*this);
+  if (!focused_element || !old_parent.HasFocusWithin() ||
+      !contains(focused_element) || old_parent_element == new_parent_element) {
+    return;
+  }
 
-    // The "focus within" flag is set separately on each ancestor, and affects
-    // the :focus-within CSS property. We set it to the right value here because
-    // we skipped the step that sets it on removal/insertion.
-    old_parent_element->SetHasFocusWithinUpToAncestor(
-        false, common_ancestor, /*need_snap_container_search=*/false);
+  // `new_parent_element` is null when the node has no flat-tree parent
+  // element, e.g. when it was moved directly underneath the document. There is
+  // then no new ancestor to set the flag on, and the old chain is cleared all
+  // the way up.
+  Element* common_ancestor =
+      new_parent_element ? To<Element>(old_parent_element->CommonAncestor(
+                               *new_parent_element, UserActionElementParent))
+                         : nullptr;
+
+  // The "focus within" flag is set separately on each ancestor, and affects
+  // the :focus-within CSS property. We set it to the right value here because
+  // we skipped the step that sets it on removal/insertion.
+  old_parent_element->SetHasFocusWithinUpToAncestor(
+      false, common_ancestor, /*need_snap_container_search=*/false);
+  if (new_parent_element) {
     new_parent_element->SetHasFocusWithinUpToAncestor(
         true, common_ancestor, /*need_snap_container_search=*/false);
   }

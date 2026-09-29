@@ -12,6 +12,8 @@
 </section>
 <section id="inert_when_not_empty_parent">
 </section>
+<div id="shadow_host"></div>
+<div id="shadow_host2"></div>
 
 <style>
     #inert_when_not_empty_parent:has(button) {
@@ -78,4 +80,32 @@ promise_test(async t => {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     assert_focus_within([]);
 }, ":focus-within should be eventually up to date when moving to a subtree that would become inert via style");
+
+test(t => {
+    const old_parent = document.querySelector("#old_parent");
+    const shadow_host = document.querySelector("#shadow_host");
+    const button = document.querySelector("#button");
+    const shadow_root = shadow_host.attachShadow({mode: "open"});
+    t.add_cleanup(() => old_parent.append(button));
+    button.focus();
+    // The new parent is a shadow root, which is not an element. The element
+    // that gains :focus-within is therefore the shadow host.
+    shadow_root.moveBefore(button, null);
+    assert_equals(button.parentNode, shadow_root, "button was moved");
+    assert_focus_within([document.documentElement, document.body, shadow_host]);
+}, "focus-within should be updated when moving a focused element into a shadow root");
+
+test(t => {
+    const old_parent = document.querySelector("#old_parent");
+    const shadow_host = document.querySelector("#shadow_host2");
+    const button = document.querySelector("#button");
+    const shadow_root = shadow_host.attachShadow({mode: "open"});
+    t.add_cleanup(() => document.body.append(old_parent));
+    t.add_cleanup(() => old_parent.append(button));
+    button.focus();
+    // Same as above, but the moved node merely contains the focused element.
+    shadow_root.moveBefore(old_parent, null);
+    assert_equals(old_parent.parentNode, shadow_root, "old_parent was moved");
+    assert_focus_within([document.documentElement, document.body, shadow_host]);
+}, "focus-within should be updated when moving an element with focus within into a shadow root");
 </script>
