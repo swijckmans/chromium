@@ -535,14 +535,20 @@ FilePath GetUniquePathWithSuffixFormat(const FilePath& path,
 }
 
 bool IsReservedNameOnWindows(const base::FilePath::StringType& filename) {
-  // This list is taken from the MSDN article "Naming a file"
-  // http://msdn2.microsoft.com/en-us/library/aa365247(VS.85).aspx
+  // This list is taken from Microsoft's "Naming a file" documentation:
+  // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  // Windows also recognizes superscript-digit forms of COM and LPT names.
   // `clock$` is also included because GetSaveFileName seems to consider it as a
   // reserved name too.
-  static constexpr auto kKnownDevices = std::to_array(
-      {"con",  "prn",  "aux",  "nul",  "com1", "com2", "com3",  "com4",
-       "com5", "com6", "com7", "com8", "com9", "lpt1", "lpt2",  "lpt3",
-       "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9", "clock$"});
+  static constexpr auto kKnownDevices =
+      std::to_array({"con",         "prn",         "aux",         "nul",
+                     "com0",        "com1",        "com2",        "com3",
+                     "com4",        "com5",        "com6",        "com7",
+                     "com8",        "com9",        "lpt0",        "lpt1",
+                     "lpt2",        "lpt3",        "lpt4",        "lpt5",
+                     "lpt6",        "lpt7",        "lpt8",        "lpt9",
+                     "com\xC2\xB9", "com\xC2\xB2", "com\xC2\xB3", "lpt\xC2\xB9",
+                     "lpt\xC2\xB2", "lpt\xC2\xB3", "clock$"});
   static constexpr auto kMagicNames = base::MakeFixedFlatSet<std::string_view>({
       // These file names are used by the "Customize folder" feature of the
       // shell.
