@@ -1497,12 +1497,17 @@ void ContainerNode::ChildrenChanged(const ChildrenChange& change) {
   }
   if (!InActiveDocument())
     return;
+  if (GetDocument().StatePreservingAtomicMoveInProgress()) {
+    // The layout tree is not detached when a node is removed for a
+    // state-preserving atomic move, so the node has to be reattached in its
+    // new flat tree position. The new parent may be a shadow root, which is
+    // not an Element.
+    //
+    // This is always safe, since `inserted_node` is either an element or text
+    // node, whose style can be dirtied.
+    inserted_node->FlatTreeParentChanged();
+  }
   if (Element* element = DynamicTo<Element>(this)) {
-    if (GetDocument().StatePreservingAtomicMoveInProgress()) {
-      // This is always safe, since `inserted_node` is either an element or text
-      // node, whose style can be dirtied.
-      inserted_node->FlatTreeParentChanged();
-    }
     if (!element->GetComputedStyle()) {
       // There is no need to mark for style recalc if the parent element does
       // not already have a ComputedStyle. For instance if we insert nodes into

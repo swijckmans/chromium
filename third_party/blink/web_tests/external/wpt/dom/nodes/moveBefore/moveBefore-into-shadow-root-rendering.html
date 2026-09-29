@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<body>
+<div id="hostA" style="position:absolute; left:0; top:0; width:100px"></div>
+<div id="hostB" style="position:absolute; left:500px; top:300px; width:100px"></div>
+<div id="hostC"></div>
+<div id="hostD"></div>
+<div id="hiddenWrapper" style="display:none"><div id="hostE" style="position:absolute; left:200px; top:100px"></div></div>
+<div id="unrelated">unrelated</div>
+<script>
+test(() => {
+  const rootA = hostA.attachShadow({mode: 'open'});
+  const item = document.createElement('div');
+  item.textContent = 'item';
+  hostB.append(item);
+  assert_equals(item.getBoundingClientRect().left, 500,
+                'precondition: item renders inside hostB');
+
+  rootA.moveBefore(item, null);
+
+  assert_equals(item.getRootNode(), rootA, 'item is in hostA\'s shadow tree');
+  assert_equals(item.getBoundingClientRect().left, 0,
+                'item renders inside hostA after the move');
+}, 'moveBefore() into a shadow root updates the layout tree position');
+
+test(() => {
+  const rootC = hostC.attachShadow({mode: 'open'});
+  const rootD = hostD.attachShadow({mode: 'open'});
+  const x = document.createElement('div');
+  x.textContent = 'x';
+  const y = document.createElement('div');
+  y.textContent = 'y';
+  rootC.append(x);
+  rootD.append(y);
+  document.body.offsetHeight;
+
+  rootC.moveBefore(y, null);
+  document.body.offsetHeight;
+  x.style.display = 'none';
+  document.body.offsetHeight;
+  x.style.display = '';
+  document.body.offsetHeight;
+}, 'moveBefore() between two shadow roots does not crash on a later reattach');
+
+test(() => {
+  const rootE = hostE.attachShadow({mode: 'open'});
+  const item = document.createElement('div');
+  item.textContent = 'item';
+  document.body.append(item);
+  document.body.offsetHeight;
+
+  // Leave a pending style recalc root elsewhere in the document, then move
+  // a rendered node into a shadow root whose host has no computed style.
+  unrelated.style.color = 'green';
+  rootE.moveBefore(item, null);
+  document.body.offsetHeight;
+
+  assert_equals(item.getBoundingClientRect().width, 0,
+                'item is not rendered inside a display:none host');
+
+  hiddenWrapper.style.display = '';
+  assert_equals(item.getBoundingClientRect().left, 200,
+                'item renders inside hostE once the host is displayed');
+}, 'moveBefore() into a shadow root whose host has no computed style');
+</script>
