@@ -137,8 +137,10 @@ void StyleRecalcRoot::FlatTreePositionChanged(const Node& node) {
   if (GetRootNode()->IsDocumentNode()) {
     return;
   }
-  DCHECK(node.parentElement());
-  SubtreeModified(*node.parentElement());
+  // The light tree parent may be a shadow root when the node was moved
+  // directly into a shadow tree. SubtreeModified() handles that case.
+  DCHECK(node.parentNode());
+  SubtreeModified(*node.parentNode());
 }
 
 }  // namespace blink
