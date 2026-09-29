@@ -90,6 +90,8 @@ SkeletonGenerator::SkeletonGenerator(const USpoofChecker* checker)
   //      U+0E1F (ฟ), U+0E9E (ພ), U+0E9F (ຟ)} => w
   //   - {U+043C (м), U+04CE (ӎ)} => m
   //   - {U+0454 (є), U+04BD (ҽ), U+04BF (ҿ), U+1054 (ၔ)} => e
+  // Latin letters admitted by ICU 78 (Unicode 17) that look like ASCII
+  // letters: ɲ→n, ʋ→v, ʉ→u, ǝ/ɛ→e, ɔ→o, ʒ→z.
   //   - U+0491 (ґ) => r
   //   - {U+0493 (ғ), U+04FB (ӻ)} => f
   //   - {U+04AB (ҫ), U+1004 (င)} => c
@@ -119,17 +121,19 @@ SkeletonGenerator::SkeletonGenerator(const USpoofChecker* checker)
   extra_confusable_mapper_ = base::i18n::CreateTransliteratorFromRules(
       "ExtraConf",
       "[æӕ] > ae; [ϼҏ] > p; [ħнћңҥӈӊԋԧԩ] > h;"
-      "[ĸκкқҝҟҡӄԟ] > k; [ŋпԥกח] > n;"
+      "[ĸκкқҝҟҡӄԟ] > k; [ŋпԥกחɲ] > n;"
       "[ŧтҭԏ七丅丆丁] > t; [ƅьҍвß] > b;  [ωшщพฟພຟ] > w;"
-      "[мӎ] > m; [єҽҿၔ] > e; ґ > r; [ғӻ] > f;"
+      "[мӎ] > m; [єҽҿၔǝɛ] > e; ґ > r; [ғӻ] > f;"
       "[ҫင] > c; [ұ丫] > y; [χҳӽӿ乂] > x;"
       "[ԃძ]  > d; [ԍဌ] > g; [ടรຣຮ] > s; ၂ > j;"
       "[०০੦૦ଠ୦೦စ] > o;"
       "[৭੧૧] > q;"
       "[บບ] > u;"
+      "ʋ > v; ʉ > u; ɔ > o;"
       "[θ] > 0;"
       "[२২੨੨૨೩೭շ] > 2;"
       "[зҙӡउওਤ੩૩౩ဒვპੜკ] > 3;"
+      "ʒ > z;"
       "[੫丩ㄐ] > 4;"
       "[ճ] > 6;"
       "[৪੪୫] > 8;"
