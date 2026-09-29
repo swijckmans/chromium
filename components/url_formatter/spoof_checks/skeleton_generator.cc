@@ -227,6 +227,17 @@ Skeletons SkeletonGenerator::GetSkeletons(std::u16string_view input_hostname) {
       std::string skeleton;
       ustr_skeleton.toUTF8String(skeleton);
       skeletons.insert(skeleton);
+
+      // ICU confusable skeletons can contain combining marks (for example,
+      // U+0268 can become "i" plus U+0335). Strip them for diacritic-
+      // insensitive top-domain comparison.
+      const std::u16string skeleton_utf16 =
+          base::i18n::UnicodeStringToString16(ustr_skeleton);
+      const std::u16string skeleton_without_diacritics =
+          diacritic_remover_->Transliterate(skeleton_utf16);
+      if (skeleton_without_diacritics != skeleton_utf16) {
+        skeletons.insert(base::UTF16ToUTF8(skeleton_without_diacritics));
+      }
     }
   }
   return skeletons;

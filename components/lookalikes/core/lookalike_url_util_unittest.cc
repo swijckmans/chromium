@@ -268,6 +268,23 @@ TEST_F(LookalikeUrlUtilTest, ShouldBlockBySpoofCheckResult) {
       ShouldBlockBySpoofCheckResult(GetDomainInfo(GURL("https://test.ττ.рф"))));
 }
 
+TEST_F(LookalikeUrlUtilTest, CombiningMarkSkeletonMatchesEngagedSite) {
+  const DomainInfo navigated =
+      GetDomainInfo(GURL("https://xn--bng-2ub.com"));
+  const std::vector<DomainInfo> engaged_sites = {
+      GetDomainInfo(GURL("https://bing.com"))};
+  std::string matched_domain;
+  LookalikeUrlMatchType match_type = LookalikeUrlMatchType::kNone;
+
+  lookalikes::InitializeBlankLookalikeAllowlistForTesting();
+  EXPECT_TRUE(GetMatchingDomain(
+      navigated, engaged_sites, base::BindRepeating(&IsGoogleScholar),
+      lookalikes::GetSafetyTipsRemoteConfigProto(), &matched_domain,
+      &match_type));
+  EXPECT_EQ("bing.com", matched_domain);
+  EXPECT_EQ(LookalikeUrlMatchType::kSkeletonMatchSiteEngagement, match_type);
+}
+
 TEST_F(LookalikeUrlUtilTest, TargetEmbeddingTest) {
   const std::vector<DomainInfo> kEngagedSites = {
       GetDomainInfo(GURL("https://highengagement.com")),
