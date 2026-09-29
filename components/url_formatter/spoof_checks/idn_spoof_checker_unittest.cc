@@ -997,6 +997,7 @@ const IDNTestCase kIdnCases[] = {
     // so it's not included here.
     // Armenian:
     {"xn--mbbkpm.com", u"\u0578\u057d\u0582\u0585.com", kUnsafe},
+    {"xn--mbbkk.com", u"\u0581\u0578\u057d.com", kUnsafe},
     {"xn--mbbkpm.am", u"\u0578\u057d\u0582\u0585.am", kSafe},
     {"xn--mbbkpm.xn--y9a3aq", u"\u0578\u057d\u0582\u0585.\u0570\u0561\u0575",
      kSafe},

@@ -238,7 +238,7 @@ IDNSpoofChecker::IDNSpoofChecker() {
   const WholeScriptConfusableData kWholeScriptConfusables[] = {
       {// Armenian
        "[[:Armn:]]",
-       "[ագզէլհյոսւօՙ]",
+       "[ագզէլհյոսւօՙց]",
        {"am"}},
       {// Cyrillic
        "[[:Cyrl:]]",
