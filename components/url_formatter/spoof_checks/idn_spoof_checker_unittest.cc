@@ -90,6 +90,26 @@ const IDNTestCase kIdnCases[] = {
     {"www.xn--or3b17p6jjc.kr", u"www.\uc804\uc790\uc815\ubd80.kr", kSafe},
     // b<u-umlaut>cher (German)
     {"xn--bcher-kva.de", u"b\u00fccher.de", kSafe},
+    // Latin letters whose ICU confusable skeleton is base letter + combining
+    // mark.
+    {"xn--bng-2ub.com", u"b\u0268ng.com", kUnsafe},
+    {"xn--eay-osb.com", u"e\u0253ay.com", kUnsafe},
+    {"xn--cloud-xnc.com", u"\u0268cloud.com", kUnsafe},
+    {"xn--wkipedia-sud.org", u"w\u0268kipedia.org", kUnsafe},
+    {"xn--twtter-x1c.com", u"tw\u0268tter.com", kUnsafe},
+    {"xn--outube-v0b.com", u"\u01b4outube.com", kUnsafe},
+    {"xn--outloo-nvb.com", u"outloo\u0199.com", kUnsafe},
+    {"xn--wellsfago-60d.com", u"wellsfa\u024dgo.com", kUnsafe},
+    {"xn--ropbox-9xc.com", u"\u0256ropbox.com", kUnsafe},
+    {"xn--redit-2kc.com", u"re\u0257dit.com", kUnsafe},
+    // Latin letters admitted by ICU 78 that look like ASCII letters.
+    {"xn--etflix-v3c.com", u"\u0272etflix.com", kUnsafe},
+    {"xn--lie-3yb.com", u"li\u028be.com", kUnsafe},
+    {"xn--yotube-j8c.com", u"yo\u0289tube.com", kUnsafe},
+    {"xn--facbook-4jc.com", u"fac\u01ddbook.com", kUnsafe},
+    {"xn--facbook-xdd.com", u"fac\u025bbook.com", kUnsafe},
+    {"xn--amazn-mkc.com", u"amaz\u0254n.com", kUnsafe},
+    {"xn--amaon-7uc.com", u"ama\u0292on.com", kUnsafe},
     // a with diaeresis
     {"www.xn--frgbolaget-q5a.se", u"www.f\u00e4rgbolaget.se", kSafe},
     // c-cedilla (French)
@@ -1445,6 +1465,18 @@ TEST(IDNSpoofCheckerNoFixtureTest, MultipleSkeletons) {
   EXPECT_EQ(Skeletons({"oexarnple.corn", "oexarnble.corn", "cexarnple.corn",
                        "cexarnble.corn"}),
             skeletons);
+}
+
+TEST(IDNSpoofCheckerNoFixtureTest, SkeletonStripsCombiningMarks) {
+  IDNSpoofChecker checker;
+  EXPECT_TRUE(checker.GetSkeletons(u"b\u0268ng.com").contains("bing.corn"));
+}
+
+TEST(IDNSpoofCheckerNoFixtureTest, SkeletonMapsIcu78Letters) {
+  IDNSpoofChecker checker;
+  EXPECT_TRUE(
+      checker.GetSkeletons(u"\u0272etflix.com").contains("netflix.corn"));
+  EXPECT_TRUE(checker.GetSkeletons(u"li\u028be.com").contains("live.corn"));
 }
 
 TEST(IDNSpoofCheckerNoFixtureTest, AlternativeSkeletons) {
