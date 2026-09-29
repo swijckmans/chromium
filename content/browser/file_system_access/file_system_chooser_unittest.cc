@@ -227,7 +227,7 @@ TEST_F(FileSystemChooserTest, IgnoreShellIntegratedExtensions) {
       u"", std::vector<std::string>({}),
       std::vector<std::string>({"lnk", "foo.lnk", "foo.bar.local", "text",
                                 "local", "scf", "url", "website", "foo.website",
-                                "library-ms"})));
+                                "library-ms", "searchconnector-ms"})));
   SyncShowDialog(std::move(accepts),
                  /*include_accepts_all=*/false);
 

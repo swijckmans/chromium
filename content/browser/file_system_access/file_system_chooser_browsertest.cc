@@ -2034,6 +2034,9 @@ IN_PROC_BROWSER_TEST_F(FileSystemChooserBrowserTest, SuggestedName) {
   name_infos.push_back({"dangerous_extension.library-ms",
                         ListValueOf(".library-ms"), true,
                         "dangerous_extension.download", false});
+  name_infos.push_back({"dangerous_extension.searchconnector-ms",
+                        ListValueOf(".searchconnector-ms"), true,
+                        "dangerous_extension.download", false});
   // Compound extensions ending in a dangerous extension should be sanitized.
   name_infos.push_back({"dangerous_extension.png.local", ListValueOf(".local"),
                         true, "dangerous_extension.png.download", false});

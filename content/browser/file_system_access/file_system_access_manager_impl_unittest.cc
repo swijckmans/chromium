@@ -2623,6 +2623,7 @@ TEST_F(FileSystemAccessManagerImplTest, IsSafePathComponent) {
       "a.url",
       "a.website",
       "a.library-ms",
+      "a.searchconnector-ms",
       "C:",
   };
 
