@@ -1242,18 +1242,13 @@ void PropertyTreeManager::BuildEffectNodesRecursively(
 
     // |has_multiple_groups| implies that this paint effect node is split into
     // multiple CC effect nodes. This happens when we have non-contiguous paint
-    // chunks which share the same paint effect node and as a result the same
-    // shared element resource ID.
-    // Since a shared element resource ID must be associated with a single CC
-    // effect node, the code ensures that only one CC effect node (associated
-    // with the first contiguous set of chunks) is tagged with the shared
-    // element resource ID. The view transition should either prevent such
-    // content or ensure effect nodes are contiguous. See crbug.com/1303081 for
-    // details. This restriction also applies to element capture.
-    DCHECK((!next_effect.ViewTransitionElementResourceId().IsValid() &&
-            next_effect.ElementCaptureId()->is_zero()) ||
-           !has_multiple_groups)
-        << next_effect.ToString();
+    // chunks which share the same paint effect node. A view transition
+    // resource ID and an element capture ID must each map to a single CC
+    // effect node, so only the node for the first contiguous set of chunks
+    // keeps them. The view transition should either prevent such content or
+    // ensure effect nodes are contiguous. See crbug.com/1303081 for details.
+    // This restriction also applies to element capture, and the underlying
+    // Blink-side non-contiguity issue remains.
     PopulateCcEffectNode(effect_node, next_effect, output_clip_id);
   } else {
     // We have used the outermost synthetic effect for |next_effect| in
@@ -1271,6 +1266,12 @@ void PropertyTreeManager::BuildEffectNodesRecursively(
       effect_node.element_id =
           CompositorElementIdFromUniqueObjectId(NewUniqueObjectId());
     }
+    // A view transition resource id and an element capture id must each map to
+    // a single cc effect node, so only the node for the first contiguous set
+    // of chunks keeps them.
+    effect_node.view_transition_element_resource_id =
+        viz::ViewTransitionElementResourceId();
+    effect_node.subtree_capture_id = viz::SubtreeCaptureId();
   } else {
     next_effect.SetCcNodeId(new_sequence_number_, real_effect_node_id);
   }
