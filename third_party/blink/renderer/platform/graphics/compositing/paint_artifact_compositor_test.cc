@@ -2320,6 +2320,36 @@ TEST_P(PaintArtifactCompositorTest, NonContiguousEffectWithElementId) {
                             .element_id);
 }
 
+TEST_P(PaintArtifactCompositorTest,
+       NonContiguousEffectWithViewTransitionResourceId) {
+  EffectPaintPropertyNode::State state;
+  state.local_transform_space = &t0();
+  state.output_clip = &c0();
+  state.direct_compositing_reasons = {
+      CompositingReason::kViewTransitionElement};
+  state.compositor_element_id = CompositorElementIdFromUniqueObjectId(
+      2, CompositorElementIdNamespace::kViewTransitionElement);
+  const viz::ViewTransitionElementResourceId resource_id(
+      ViewTransitionToken(), 1, /*for_scope_snapshot=*/false);
+  state.view_transition_element_resource_id = resource_id;
+  auto* effect = EffectPaintPropertyNode::Create(e0(), std::move(state));
+
+  TestPaintArtifact artifact;
+  artifact.Chunk(t0(), c0(), *effect)
+      .RectDrawing(gfx::Rect(100, 100, 200, 100), Color::kBlack)
+      .Chunk(t0(), c0(), e0())
+      .RectDrawing(gfx::Rect(100, 100, 300, 100), Color::kBlack)
+      .Chunk(t0(), c0(), *effect)
+      .RectDrawing(gfx::Rect(100, 100, 400, 100), Color::kBlack);
+  Update(artifact.Build());
+
+  ASSERT_EQ(3u, LayerCount());
+  EXPECT_EQ(resource_id,
+            GetEffectNode(LayerAt(0)).view_transition_element_resource_id);
+  EXPECT_FALSE(
+      GetEffectNode(LayerAt(2)).view_transition_element_resource_id.IsValid());
+}
+
 TEST_P(PaintArtifactCompositorTest, EffectWithElementIdWithAlias) {
   auto* real_effect = CreateSampleEffectNodeWithElementId();
   auto* effect = EffectPaintPropertyNodeAlias::Create(*real_effect);
