@@ -134,5 +134,51 @@ TEST_F(RemoteValidationTest, CspDisallowedRedirect) {
   histograms.ExpectUniqueSample("WebAuthentication.CspAllow.Remote", false, 1);
 }
 
+TEST_F(RemoteValidationTest, HttpRedirectRejected) {
+  base::test::TestFuture<ValidationStatus> future;
+  auto validation = RemoteValidation::Create(
+      url::Origin::Create(GURL("https://example.com")), "allowed.com",
+      shared_url_loader_factory_, {}, base::DoNothing(), future.GetCallback());
+
+  net::RedirectInfo redirect_info;
+  redirect_info.new_url = GURL("http://allowed.com/.well-known/webauthn");
+  redirect_info.status_code = 302;
+
+  network::TestURLLoaderFactory::Redirects redirects;
+  redirects.emplace_back(redirect_info, network::mojom::URLResponseHead::New());
+
+  auto head = network::mojom::URLResponseHead::New();
+  head->mime_type = "application/json";
+  test_url_loader_factory_.AddResponse(
+      GURL("https://allowed.com/.well-known/webauthn"), std::move(head),
+      R"({"origins":["https://example.com"]})",
+      network::URLLoaderCompletionStatus(net::OK), std::move(redirects));
+
+  EXPECT_EQ(future.Get(), ValidationStatus::kAttemptedFetch);
+}
+
+TEST_F(RemoteValidationTest, HttpsRedirectFollowed) {
+  base::test::TestFuture<ValidationStatus> future;
+  auto validation = RemoteValidation::Create(
+      url::Origin::Create(GURL("https://example.com")), "allowed.com",
+      shared_url_loader_factory_, {}, base::DoNothing(), future.GetCallback());
+
+  net::RedirectInfo redirect_info;
+  redirect_info.new_url = GURL("https://allowed.com/.well-known/webauthn");
+  redirect_info.status_code = 302;
+
+  network::TestURLLoaderFactory::Redirects redirects;
+  redirects.emplace_back(redirect_info, network::mojom::URLResponseHead::New());
+
+  auto head = network::mojom::URLResponseHead::New();
+  head->mime_type = "application/json";
+  test_url_loader_factory_.AddResponse(
+      GURL("https://allowed.com/.well-known/webauthn"), std::move(head),
+      R"({"origins":["https://example.com"]})",
+      network::URLLoaderCompletionStatus(net::OK), std::move(redirects));
+
+  EXPECT_EQ(future.Get(), ValidationStatus::kSuccess);
+}
+
 }  // namespace
 }  // namespace webauthn
