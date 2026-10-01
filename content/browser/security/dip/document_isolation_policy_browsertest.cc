@@ -327,6 +327,12 @@ class DocumentIsolationPolicyBrowserTest
     return rfh->GetSiteInstance()->IsCrossOriginIsolated();
   }
 
+  bool IsConcreteCrossOriginIsolationExpected() const {
+    return site_isolation_status_ == SiteIsolationStatus::kSiteIsolation ||
+           site_isolation_status_ ==
+               SiteIsolationStatus::kPartialSiteIsolation;
+  }
+
  private:
   class MockContentBrowserClientWithSiteIsolationStatus
       : public ContentBrowserTestContentBrowserClient {
@@ -1364,7 +1370,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest, DipOriginKeyed) {
 
   EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
   SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-  EXPECT_TRUE(current_si->IsCrossOriginIsolated());
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            current_si->IsCrossOriginIsolated());
 
   EXPECT_TRUE(current_si->GetSiteInfo().agent_cluster_key().IsOriginKeyed());
 
@@ -1395,7 +1402,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
 
   EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
   SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-  EXPECT_TRUE(current_si->IsCrossOriginIsolated());
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            current_si->IsCrossOriginIsolated());
   EXPECT_TRUE(current_si->GetSiteInfo().agent_cluster_key().IsOriginKeyed());
   EXPECT_EQ(origin, current_si->GetSiteInfo().agent_cluster_key().GetOrigin());
 }
@@ -1422,7 +1430,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
         current_frame_host()->GetSiteInstance();
     EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
     SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
 
     // The navigation triggers a speculative BrowsingInstance swap because it is
     // browser-initiated and end up being cross-site due to the DIP mismatch.
@@ -1452,7 +1461,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
     web_contents()->GetController().GoBack();
     EXPECT_TRUE(WaitForLoadStop(web_contents()));
     SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
 
     // The navigation triggers a speculative BrowsingInstance swap because it is
     // browser-initiated and end up being cross-site due to the DIP mismatch.
@@ -1480,10 +1490,12 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
     EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
     scoped_refptr<SiteInstanceImpl> site_instance_1 =
         current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
     EXPECT_TRUE(NavigateToURL(shell(), isolated_page_b));
     SiteInstanceImpl* site_instance_2 = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
 
     // The navigation triggers a speculative BrowsingInstance swap because it is
     // browser-initiated and end up being cross-site due to the DIP mismatch.
@@ -1515,7 +1527,8 @@ IN_PROC_BROWSER_TEST_P(
         current_frame_host()->GetSiteInstance();
     EXPECT_TRUE(NavigateToURLFromRenderer(shell(), isolated_page));
     SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
 
     CheckSiteInstancesAreIsolated(current_si, previous_si.get(),
                                   ExpectBISwap::kBFCacheOnly);
@@ -1527,7 +1540,8 @@ IN_PROC_BROWSER_TEST_P(
         current_frame_host()->GetSiteInstance();
     EXPECT_TRUE(NavigateToURLFromRenderer(shell(), isolated_page));
     SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
     EXPECT_EQ(current_si, previous_si);
   }
 
@@ -1551,7 +1565,8 @@ IN_PROC_BROWSER_TEST_P(
     web_contents()->GetController().GoBack();
     ASSERT_TRUE(WaitForLoadStop(web_contents()));
     SiteInstanceImpl* current_si = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
 
     // When BfCache is enabled, a pro-active BrowsingInstance swap happens.
     CheckSiteInstancesAreIsolated(current_si, previous_si.get(),
@@ -1563,10 +1578,12 @@ IN_PROC_BROWSER_TEST_P(
     EXPECT_TRUE(NavigateToURLFromRenderer(shell(), isolated_page));
     scoped_refptr<SiteInstanceImpl> site_instance_1 =
         current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
     EXPECT_TRUE(NavigateToURLFromRenderer(shell(), isolated_page_b));
     SiteInstanceImpl* site_instance_2 = current_frame_host()->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(current_frame_host()));
 
     // When BfCache is enabled, a pro-active BrowsingInstance swap happens.
     CheckSiteInstancesAreIsolated(site_instance_1.get(), site_instance_2,
@@ -1585,7 +1602,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   // Initial cross-origin isolated page.
   EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
   SiteInstanceImpl* main_si = current_frame_host()->GetSiteInstance();
-  EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            IsCrossOriginIsolated(current_frame_host()));
 
   // Same origin cross-origin isolated iframe.
   TestNavigationManager coi_iframe_navigation(web_contents(), isolated_page);
@@ -1641,7 +1659,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   RenderFrameHostImpl* iframe_rfh =
       current_frame_host()->child_at(2)->current_frame_host();
   SiteInstanceImpl* cross_origin_iframe_si = iframe_rfh->GetSiteInstance();
-  EXPECT_TRUE(IsCrossOriginIsolated(iframe_rfh));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            IsCrossOriginIsolated(iframe_rfh));
 
   CheckSiteInstancesAreIsolated(cross_origin_iframe_si, main_si);
   CheckSiteInstancesAreIsolated(cross_origin_iframe_si, coi_iframe_si);
@@ -1673,7 +1692,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
     EXPECT_TRUE(same_origin_iframe_navigation.was_successful());
     iframe_rfh = current_frame_host()->child_at(0)->current_frame_host();
     SiteInstanceImpl* iframe_si = iframe_rfh->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(iframe_rfh));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(iframe_rfh));
     CheckSiteInstancesAreIsolated(iframe_si, main_si);
   }
 }
@@ -1689,7 +1709,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
 
   // Initial cross-origin isolated page.
   EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
-  EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            IsCrossOriginIsolated(current_frame_host()));
 
   // Open a non isolated popup.
   {
@@ -1711,7 +1732,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
             OpenPopup(current_frame_host(), isolated_page, "")->web_contents())
             ->GetPrimaryMainFrame();
 
-    EXPECT_TRUE(IsCrossOriginIsolated(popup_rfh));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(popup_rfh));
     EXPECT_EQ(popup_rfh->GetSiteInstance(),
               current_frame_host()->GetSiteInstance());
   }
@@ -1724,7 +1746,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
                 ->web_contents())
             ->GetPrimaryMainFrame();
 
-    EXPECT_TRUE(IsCrossOriginIsolated(popup_rfh));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(popup_rfh));
     EXPECT_TRUE(popup_rfh->GetSiteInstance()->IsRelatedSiteInstance(
         current_frame_host()->GetSiteInstance()));
     CheckSiteInstancesAreIsolated(popup_rfh->GetSiteInstance(),
@@ -1755,7 +1778,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   // Initial cross-origin isolated page.
   EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
   SiteInstanceImpl* main_si = current_frame_host()->GetSiteInstance();
-  EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            IsCrossOriginIsolated(current_frame_host()));
 
   // Iframe.
   {
@@ -1860,7 +1884,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
     RenderFrameHostImpl* iframe_rfh =
         current_frame_host()->child_at(0)->current_frame_host();
     scoped_refptr<SiteInstanceImpl> iframe_si = iframe_rfh->GetSiteInstance();
-    EXPECT_TRUE(IsCrossOriginIsolated(iframe_rfh));
+    EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+              IsCrossOriginIsolated(iframe_rfh));
 
     CheckSiteInstancesAreIsolated(current_si, iframe_si.get());
 
@@ -1944,7 +1969,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   // Initial cross-origin isolated page.
   EXPECT_TRUE(NavigateToURL(shell(), isolated_page));
   SiteInstanceImpl* main_si = current_frame_host()->GetSiteInstance();
-  EXPECT_TRUE(IsCrossOriginIsolated(current_frame_host()));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            IsCrossOriginIsolated(current_frame_host()));
 
   TestNavigationManager cross_origin_iframe_navigation(web_contents(),
                                                        isolated_page_b);
@@ -1962,7 +1988,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   RenderFrameHostImpl* iframe_rfh =
       current_frame_host()->child_at(0)->current_frame_host();
   SiteInstanceImpl* iframe_si = iframe_rfh->GetSiteInstance();
-  EXPECT_TRUE(IsCrossOriginIsolated(iframe_rfh));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            IsCrossOriginIsolated(iframe_rfh));
   CheckSiteInstancesAreIsolated(main_si, iframe_si);
 
   // Open an isolated popup from the cross-origin but same-site iframe. It
@@ -2022,8 +2049,9 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
 IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest, SAB) {
   GURL url = GetDocumentIsolationPolicyURL("a.test");
   EXPECT_TRUE(NavigateToURL(shell(), url));
-  EXPECT_EQ(true, EvalJs(current_frame_host(), "self.crossOriginIsolated"));
-  EXPECT_EQ(true,
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(current_frame_host(), "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
             EvalJs(current_frame_host(), "'SharedArrayBuffer' in globalThis"));
 }
 
@@ -2044,8 +2072,18 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   RenderFrameHostImpl* sub_document =
       current_frame_host()->child_at(0)->current_frame_host();
 
-  EXPECT_EQ(true, EvalJs(main_document, "self.crossOriginIsolated"));
-  EXPECT_EQ(true, EvalJs(sub_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(main_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(sub_document, "self.crossOriginIsolated"));
+
+  if (!IsConcreteCrossOriginIsolationExpected()) {
+    EXPECT_EQ(false,
+              EvalJs(main_document, "'SharedArrayBuffer' in globalThis"));
+    EXPECT_EQ(false,
+              EvalJs(sub_document, "'SharedArrayBuffer' in globalThis"));
+    return;
+  }
 
   EXPECT_TRUE(ExecJs(sub_document, R"(
     g_sab_size = new Promise(resolve => {
@@ -2079,9 +2117,12 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   RenderFrameHostImpl* sub_document =
       current_frame_host()->child_at(0)->current_frame_host();
 
-  EXPECT_EQ(true, EvalJs(main_document, "self.crossOriginIsolated"));
-  EXPECT_EQ(true, EvalJs(sub_document, "self.crossOriginIsolated"));
-  EXPECT_EQ(true, EvalJs(sub_document, "'SharedArrayBuffer' in globalThis"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(main_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(sub_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(sub_document, "'SharedArrayBuffer' in globalThis"));
 }
 
 // Checks that an about:blank iframe created by a cross-origin isolated document
@@ -2092,10 +2133,11 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   CHECK(!base::FeatureList::IsEnabled(features::kSharedArrayBuffer));
   GURL url = GetDocumentIsolationPolicyURL("a.test");
   EXPECT_TRUE(NavigateToURL(shell(), url));
-  EXPECT_EQ(true, EvalJs(current_frame_host(),
-                         "const iframe = document.createElement('iframe');"
-                         "document.body.appendChild(iframe);"
-                         "iframe.contentWindow.crossOriginIsolated;"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(current_frame_host(),
+                   "const iframe = document.createElement('iframe');"
+                   "document.body.appendChild(iframe);"
+                   "iframe.contentWindow.crossOriginIsolated;"));
 }
 
 // Transfer a SharedArrayBuffer in between two documents with a parent/child
@@ -2118,8 +2160,15 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   RenderFrameHostImpl* sub_document =
       current_frame_host()->child_at(0)->current_frame_host();
 
-  EXPECT_EQ(true, EvalJs(main_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(main_document, "self.crossOriginIsolated"));
   EXPECT_EQ(false, EvalJs(sub_document, "self.crossOriginIsolated"));
+
+  if (!IsConcreteCrossOriginIsolationExpected()) {
+    EXPECT_EQ(false,
+              EvalJs(main_document, "'SharedArrayBuffer' in globalThis"));
+    return;
+  }
 
   SiteInstanceImpl* main_si = main_document->GetSiteInstance();
   SiteInstanceImpl* iframe_si = sub_document->GetSiteInstance();
@@ -2191,8 +2240,15 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
   RenderFrameHostImpl* sub_document =
       current_frame_host()->child_at(0)->current_frame_host();
 
-  EXPECT_EQ(true, EvalJs(main_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(main_document, "self.crossOriginIsolated"));
   EXPECT_EQ(false, EvalJs(sub_document, "self.crossOriginIsolated"));
+
+  if (!IsConcreteCrossOriginIsolationExpected()) {
+    EXPECT_EQ(false,
+              EvalJs(main_document, "'SharedArrayBuffer' in globalThis"));
+    return;
+  }
 
   EXPECT_TRUE(ExecJs(main_document, R"(
     g_sab_size = new Promise(resolve => {
@@ -2237,7 +2293,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
       current_frame_host()->child_at(0)->current_frame_host();
 
   EXPECT_EQ(false, EvalJs(main_document, "self.crossOriginIsolated"));
-  EXPECT_EQ(true, EvalJs(sub_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(sub_document, "self.crossOriginIsolated"));
 
   CheckSiteInstancesAreIsolated(main_document->GetSiteInstance(),
                                 sub_document->GetSiteInstance());
@@ -2264,7 +2321,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyBrowserTest,
       current_frame_host()->child_at(0)->current_frame_host();
 
   EXPECT_EQ(false, EvalJs(main_document, "self.crossOriginIsolated"));
-  EXPECT_EQ(true, EvalJs(sub_document, "self.crossOriginIsolated"));
+  EXPECT_EQ(IsConcreteCrossOriginIsolationExpected(),
+            EvalJs(sub_document, "self.crossOriginIsolated"));
 
   CheckSiteInstancesAreIsolated(main_document->GetSiteInstance(),
                                 sub_document->GetSiteInstance());
@@ -2329,16 +2387,16 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyWithLogicalCOIBrowserTest,
   GURL logical_coi = GetDocumentIsolationPolicyURL(kLogicalCOIOrigin);
   GURL no_dip(https_server()->GetURL("a.test", "/empty.html"));
 
-  // Navigate to an origin which has been allowlisted for concrete COI. It
-  // should be marked as cross-origin isolated and have access to SABs.
+  // Navigate to an origin which has been allowlisted for concrete COI. Without
+  // process isolation, it should still get logical COI.
   EXPECT_TRUE(NavigateToURL(shell(), concrete_coi));
   if (ShouldUseDefaultSiteInstanceGroup()) {
-    EXPECT_TRUE(current_frame_host()
-                    ->GetSiteInstance()
-                    ->GetSiteInfo()
-                    .agent_cluster_key()
-                    .IsCrossOriginIsolated());
-    EXPECT_EQ(blink::mojom::CrossOriginIsolationMode::kConcrete,
+    EXPECT_FALSE(current_frame_host()
+                     ->GetSiteInstance()
+                     ->GetSiteInfo()
+                     .agent_cluster_key()
+                     .IsCrossOriginIsolated());
+    EXPECT_EQ(blink::mojom::CrossOriginIsolationMode::kLogical,
               current_frame_host()
                   ->GetSiteInstance()
                   ->GetSiteInfo()
@@ -2356,14 +2414,14 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyWithLogicalCOIBrowserTest,
                      .agent_cluster_key()
                      .IsCrossOriginIsolated());
     EXPECT_EQ(
-        blink::mojom::CrossOriginIsolationMode::kConcrete,
+        blink::mojom::CrossOriginIsolationMode::kLogical,
         current_frame_host()
             ->policy_container_host()
             ->policies()
             .cross_origin_isolation_key_override->cross_origin_isolation_mode);
   }
-  EXPECT_EQ(true, EvalJs(current_frame_host(), "self.crossOriginIsolated"));
-  EXPECT_EQ(true,
+  EXPECT_EQ(false, EvalJs(current_frame_host(), "self.crossOriginIsolated"));
+  EXPECT_EQ(false,
             EvalJs(current_frame_host(), "'SharedArrayBuffer' in globalThis"));
 
   // Navigate to an origin which has not been allowlisted for concrete COI. It
@@ -2402,8 +2460,8 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyWithLogicalCOIBrowserTest,
   // Navigate to a page without DIP.
   EXPECT_TRUE(NavigateToURL(shell(), no_dip));
 
-  // Create an iframe with an origin allowlisted for concrete COI. It should be
-  // marked as cross-origin isolated and have access to SABs.
+  // Create an iframe with an origin allowlisted for concrete COI. Without
+  // process isolation, it should still get logical COI.
   TestNavigationManager concrete_coi_iframe_navigation(web_contents(),
                                                        concrete_coi);
   EXPECT_TRUE(
@@ -2418,11 +2476,11 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyWithLogicalCOIBrowserTest,
   RenderFrameHostImpl* concrete_coi_iframe_rfh =
       current_frame_host()->child_at(0)->current_frame_host();
   if (ShouldUseDefaultSiteInstanceGroup()) {
-    EXPECT_TRUE(concrete_coi_iframe_rfh->GetSiteInstance()
-                    ->GetSiteInfo()
-                    .agent_cluster_key()
-                    .IsCrossOriginIsolated());
-    EXPECT_EQ(blink::mojom::CrossOriginIsolationMode::kConcrete,
+    EXPECT_FALSE(concrete_coi_iframe_rfh->GetSiteInstance()
+                     ->GetSiteInfo()
+                     .agent_cluster_key()
+                     .IsCrossOriginIsolated());
+    EXPECT_EQ(blink::mojom::CrossOriginIsolationMode::kLogical,
               concrete_coi_iframe_rfh->GetSiteInstance()
                   ->GetSiteInfo()
                   .agent_cluster_key()
@@ -2437,18 +2495,17 @@ IN_PROC_BROWSER_TEST_P(DocumentIsolationPolicyWithLogicalCOIBrowserTest,
                      .agent_cluster_key()
                      .IsCrossOriginIsolated());
     EXPECT_EQ(
-        blink::mojom::CrossOriginIsolationMode::kConcrete,
+        blink::mojom::CrossOriginIsolationMode::kLogical,
         concrete_coi_iframe_rfh->policy_container_host()
             ->policies()
             .cross_origin_isolation_key_override->cross_origin_isolation_mode);
   }
-  EXPECT_EQ(true, EvalJs(concrete_coi_iframe_rfh, "self.crossOriginIsolated"));
-  EXPECT_EQ(true, EvalJs(concrete_coi_iframe_rfh,
+  EXPECT_EQ(false, EvalJs(concrete_coi_iframe_rfh, "self.crossOriginIsolated"));
+  EXPECT_EQ(false, EvalJs(concrete_coi_iframe_rfh,
                          "'SharedArrayBuffer' in globalThis"));
 
-  // Create an iframe with an origin not allolisted for concrete COI. It should
-  // have logical COI. It should be marked as cross-origin isolated and have
-  // access to SABs.
+  // Create an iframe with an origin not allowlisted for concrete COI. It should
+  // have logical COI.
   TestNavigationManager logical_coi_iframe_navigation(web_contents(),
                                                       logical_coi);
   EXPECT_TRUE(
