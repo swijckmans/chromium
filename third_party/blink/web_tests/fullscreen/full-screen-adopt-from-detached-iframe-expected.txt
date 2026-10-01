@@ -1,0 +1,7 @@
+EXPECTED (detachedDocument.fullscreenElement == '[object HTMLDivElement]') OK
+EXPECTED (fullscreenTarget.matches(':fullscreen') == 'false') OK
+EXPECTED (document.fullscreenElement == 'null') OK
+EXPECTED (detachedDocument.fullscreenElement == 'null') OK
+END OF TEST
+
+target
