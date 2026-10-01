@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Hiding a popover adopted from a detached iframe</title>
+<link rel="help" href="https://html.spec.whatwg.org/multipage/popover.html">
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+
+<script>
+async function createPopover() {
+  const iframe = document.createElement('iframe');
+  iframe.srcdoc = '<div id=p popover=auto>p</div>';
+  document.documentElement.append(iframe);
+  await new Promise(resolve => iframe.onload = resolve);
+  return {iframe, popover: iframe.contentDocument.getElementById('p')};
+}
+
+promise_test(async t => {
+  const {iframe, popover} = await createPopover();
+  t.add_cleanup(() => iframe.remove());
+  popover.showPopover();
+  assert_true(popover.matches(':popover-open'));
+  iframe.remove();
+  document.body.append(popover);
+  popover.hidePopover();
+  assert_false(popover.matches(':popover-open'));
+}, 'Hiding an adopted popover should not throw.');
+
+promise_test(async t => {
+  const {iframe, popover} = await createPopover();
+  t.add_cleanup(() => iframe.remove());
+  popover.showPopover();
+  iframe.remove();
+  document.body.append(popover);
+  popover.hidePopover();
+  popover.showPopover();
+  assert_true(popover.matches(':popover-open'));
+  popover.hidePopover();
+  assert_false(popover.matches(':popover-open'));
+}, 'An adopted popover can be shown again after hiding.');
+</script>
