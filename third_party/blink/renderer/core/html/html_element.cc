@@ -2579,11 +2579,15 @@ PopoverHideResult HTMLElement::HidePopoverInternal(
     if (!auto_stack.empty() &&
         stack_top_ignoring_inspector(auto_stack) == this) {
       stack_containing_this = &auto_stack;
-    } else {
+    } else if (!hint_stack.empty() &&
+               stack_top_ignoring_inspector(hint_stack) == this) {
       stack_containing_this = &hint_stack;
     }
-    CHECK(!stack_containing_this->empty() &&
-          stack_top_ignoring_inspector(*stack_containing_this) == this);
+    // Otherwise this popover is showing but on neither stack. That happens
+    // when its document stopped being fully active while it was showing (the
+    // removal-time hide is a no-op for such documents) and it was then adopted
+    // into another document. The spec tolerates this, so hide it without
+    // touching the stacks.
   }
 
   MarkPopoverInvokersDirty(*this);
