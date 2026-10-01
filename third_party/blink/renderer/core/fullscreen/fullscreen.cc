@@ -1300,7 +1300,13 @@ void Fullscreen::ElementRemoved(Element& node) {
   // 3.1. If |node| is its node document's fullscreen element, exit fullscreen
   // that document.
   if (IsFullscreenElement(node)) {
-    ExitFullscreen(document);
+    if (document.IsActive() && document.GetFrame()) {
+      ExitFullscreen(document);
+    } else {
+      // ExitFullscreen() does nothing for a document that is no longer fully
+      // active, which would leave the fullscreen flag set on a removed element.
+      Unfullscreen(node);
+    }
   } else {
     // 3.2. Otherwise, unfullscreen |node| within its node document.
     Unfullscreen(node);

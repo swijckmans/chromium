@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<script src="full-screen-test.js"></script>
+<script src="trusted-click.js"></script>
+<iframe allowfullscreen></iframe>
+<script>
+var iframe = document.querySelector("iframe");
+var detachedDocument;
+var fullscreenTarget;
+iframe.srcdoc = "<div id=target style='width:60px;height:30px'>target</div>";
+
+iframe.onload = function() {
+    detachedDocument = iframe.contentDocument;
+    fullscreenTarget = detachedDocument.getElementById("target");
+
+    detachedDocument.addEventListener("fullscreenchange", function() {
+        testExpected("detachedDocument.fullscreenElement", fullscreenTarget);
+
+        iframe.remove();
+        var host = document.createElement("div");
+        document.documentElement.appendChild(host);
+        host.appendChild(document.adoptNode(fullscreenTarget));
+
+        testExpected("fullscreenTarget.matches(':fullscreen')", false);
+        testExpected("document.fullscreenElement", null);
+        testExpected("detachedDocument.fullscreenElement", null);
+        endTest();
+    }, {once: true});
+
+    detachedDocument.addEventListener("click", function() {
+        silence_rejection(fullscreenTarget.requestFullscreen());
+    }, {once: true, capture: true});
+
+    setTimeout(function() {
+        var frameRect = iframe.getBoundingClientRect();
+        var frameStyle = getComputedStyle(iframe);
+        var x = frameRect.left + parseFloat(frameStyle.borderLeftWidth) + 5;
+        var y = frameRect.top + parseFloat(frameStyle.borderTopWidth) + 5;
+        eventSender.mouseMoveTo(x, y);
+        eventSender.mouseDown();
+        eventSender.mouseUp();
+    }, 0);
+};
+</script>
