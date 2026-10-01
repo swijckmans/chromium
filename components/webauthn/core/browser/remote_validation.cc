@@ -18,12 +18,14 @@
 #include "net/base/url_util.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "net/url_request/redirect_info.h"
+#include "net/url_request/referrer_policy.h"
 #include "services/network/public/cpp/content_security_policy/csp_context.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "url/gurl.h"
+#include "url/url_constants.h"
 
 namespace webauthn {
 
@@ -93,6 +95,7 @@ std::unique_ptr<RemoteValidation> RemoteValidation::Create(
   auto network_request = std::make_unique<network::ResourceRequest>();
   network_request->url = *well_known_url;
   network_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  network_request->referrer_policy = net::ReferrerPolicy::NO_REFERRER;
 
   std::unique_ptr<RemoteValidation> validation(new RemoteValidation(
       caller_origin, std::move(content_security_policies),
@@ -222,6 +225,13 @@ void RemoteValidation::OnRedirect(
     const net::RedirectInfo& redirect_info,
     const network::mojom::URLResponseHead& response_head,
     std::vector<std::string>* removed_headers) {
+  // WebAuthn Related Origin Requests require every redirect to use https:.
+  if (!redirect_info.new_url.SchemeIs(url::kHttpsScheme)) {
+    loader_.reset();
+    std::move(callback_).Run(ValidationStatus::kAttemptedFetch);
+    return;
+  }
+
   CheckCsp(redirect_info.new_url, /*has_followed_redirect=*/true);
 }
 
