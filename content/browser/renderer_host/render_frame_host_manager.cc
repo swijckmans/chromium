@@ -3704,7 +3704,10 @@ RenderFrameHostManager::DetermineSiteInstanceForURL(
   // response is received (in OnResponseStarted).
   // TODO(crbug.com/40276947): In theory we should be able to go for an
   // unused SiteInstance with the same web exposed isolation status.
+  // A destination with a CrossOriginIsolationKey, even a logical one, needs a
+  // SiteInstance keyed with that key, which an unused SiteInstance is not.
   if (!current_instance->HasSite() && !dest_url_info.IsIsolated() &&
+      !dest_url_info.cross_origin_isolation_key.has_value() &&
       !current_instance->IsCrossOriginIsolated()) {
     // If we've already created a SiteInstance for our destination, we don't
     // want to use this unused SiteInstance; use the existing one.  (We don't

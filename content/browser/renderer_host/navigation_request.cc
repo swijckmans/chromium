@@ -12146,12 +12146,12 @@ NavigationRequest::ComputeCrossOriginIsolationKey() {
   // "isolate-and-require-corp" or "isolate-and-credentialless". This means that
   // the document requested crossOriginIsolation, so return a cross-origin
   // isolation key with the current origin. Its cross-origin isolation mode
-  // depends on the capabilities of the platform.  Currently, we only support a
-  // cross-origin isolation mode of kConcrete and platforms with full Site
-  // Isolation.
-  // TODO(crbug.com/342364564): Support platforms that do not
-  // support OOPIF and return an AgentClusterKey with a CrossOriginIsolationKey
-  // that has a kLogical cross-origin isolation mode.
+  // depends on whether the platform can provide process isolation for the
+  // document. Concrete cross-origin isolation requires that the document can
+  // be placed in a process that hosts no other cross-origin content. Without
+  // strict or partial site isolation, the document gets logical
+  // cross-origin isolation instead: its agent cluster is keyed for isolation,
+  // but the cross-origin-isolated capabilities stay unavailable.
   CHECK(policy_container_builder_->FinalPolicies()
                 .document_isolation_policy.value ==
             network::mojom::DocumentIsolationPolicyValue::
@@ -12165,9 +12165,15 @@ NavigationRequest::ComputeCrossOriginIsolationKey() {
   // crossOriginIsolation for the document.
   policy_container_builder_->SetCrossOriginIsolationEnabledByDIP();
 
+  bool process_model_can_isolate_dip =
+      SiteIsolationPolicy::UseDedicatedProcessesForAllSites() ||
+      SiteIsolationPolicy::AreDynamicIsolatedOriginsEnabled();
   blink::mojom::CrossOriginIsolationMode coi_mode =
-      GetContentClient()->browser()->OriginSupportsConcreteCrossOriginIsolation(
-          GetNavigationController()->GetBrowserContext(), origin)
+      process_model_can_isolate_dip &&
+              GetContentClient()
+                  ->browser()
+                  ->OriginSupportsConcreteCrossOriginIsolation(
+                      GetNavigationController()->GetBrowserContext(), origin)
           ? blink::mojom::CrossOriginIsolationMode::kConcrete
           : blink::mojom::CrossOriginIsolationMode::kLogical;
   return AgentClusterKey::CrossOriginIsolationKey(
