@@ -130,6 +130,17 @@ PermissionResult VerifyContextOfCurrentDocument(
                             PermissionStatusSource::FENCED_FRAME);
   }
 
+  // A primary main frame with an opaque origin (e.g. a top-level document
+  // served with `Content-Security-Policy: sandbox`) has no permission identity
+  // of its own and no embedder to delegate from. Permission lookups for such a
+  // frame would otherwise be keyed to the origin of its visible URL
+  // (PermissionUtil::GetLastCommittedOriginAsURL), letting the sandboxed
+  // document use and mint grants belonging to the origin that hosts it.
+  if (render_frame_host->IsInPrimaryMainFrame() &&
+      render_frame_host->GetLastCommittedOrigin().opaque()) {
+    return PermissionResult(PermissionStatus::DENIED);
+  }
+
 #if !BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(
           features::kPermissionsPolicyVerificationInContent)) {

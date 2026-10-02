@@ -38,6 +38,7 @@
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_browser_context.h"
 #include "content/public/test/test_renderer_host.h"
+#include "net/http/http_response_headers.h"
 #include "services/network/public/cpp/permissions_policy/origin_with_possible_wildcards.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy_declaration.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom.h"
@@ -691,6 +692,83 @@ TEST_F(PermissionManagerTest, GetPermissionStatusDelegation) {
                                        PermissionType::GEOLOCATION, child));
 
   prompt_factory.reset();
+}
+
+// A top-level document with an opaque origin (here: served with
+// `Content-Security-Policy: sandbox allow-scripts`) must not be able to use
+// permission state persisted for the origin of the URL it was loaded from.
+TEST_F(PermissionManagerTest, OpaqueOriginMainFrameDoesNotBorrowUrlOrigin) {
+  const GURL kUrl("https://example.com/untrusted.html");
+  SetPermission(GURL("https://example.com"), PermissionType::GEOLOCATION,
+                PermissionStatus::GRANTED);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  content::RenderFrameHost* rfh = main_rfh();
+  ASSERT_TRUE(rfh->GetLastCommittedOrigin().opaque());
+  ASSERT_EQ(kUrl, rfh->GetLastCommittedURL());
+
+  EXPECT_NE(PermissionStatus::GRANTED, GetPermissionStatusForCurrentDocument(
+                                           PermissionType::GEOLOCATION, rfh));
+
+  // The request path must not hand out the persisted grant without a prompt.
+  PermissionRequestManager::CreateForWebContents(web_contents());
+  auto prompt_factory = std::make_unique<MockPermissionPromptFactory>(
+      PermissionRequestManager::FromWebContents(web_contents()));
+  prompt_factory->set_response_type(PermissionRequestManager::DENY_ALL);
+  prompt_factory->DocumentOnLoadCompletedInPrimaryMainFrame();
+  Reset();
+  RequestPermissionFromCurrentDocument(PermissionType::GEOLOCATION, rfh);
+  EXPECT_TRUE(callback_called());
+  EXPECT_NE(PermissionStatus::GRANTED, callback_result());
+  EXPECT_FALSE(prompt_factory->RequestOriginSeen(GURL("https://example.com")))
+      << "a sandboxed document must not prompt as the hosting origin";
+  prompt_factory.reset();
+}
+
+// Conversely, a request from such a document must not be prompted and
+// persisted as if it came from the hosting origin.
+TEST_F(PermissionManagerTest, OpaqueOriginMainFrameDoesNotMintUrlOriginGrant) {
+  const GURL kOrigin("https://example.com");
+  const GURL kUrl("https://example.com/untrusted.html");
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  content::RenderFrameHost* rfh = main_rfh();
+  ASSERT_TRUE(rfh->GetLastCommittedOrigin().opaque());
+
+  PermissionRequestManager::CreateForWebContents(web_contents());
+  auto prompt_factory = std::make_unique<MockPermissionPromptFactory>(
+      PermissionRequestManager::FromWebContents(web_contents()));
+  prompt_factory->set_response_type(PermissionRequestManager::ACCEPT_ALL);
+  if (base::FeatureList::IsEnabled(
+          content_settings::features::kApproximateGeolocationPermission)) {
+    prompt_factory->set_response_prompt_options(GeolocationPromptOptions{
+        .selected_accuracy = GeolocationAccuracy::kPrecise});
+  }
+  prompt_factory->DocumentOnLoadCompletedInPrimaryMainFrame();
+  Reset();
+  RequestPermissionFromCurrentDocument(PermissionType::GEOLOCATION, rfh);
+  EXPECT_TRUE(callback_called());
+  EXPECT_FALSE(prompt_factory->RequestOriginSeen(kOrigin));
+  prompt_factory.reset();
+
+  // Whatever happened above, a regular document on the hosting origin must
+  // still be in the ASK state.
+  NavigateAndCommit(kOrigin);
+  EXPECT_EQ(PermissionStatus::ASK,
+            GetPermissionStatusForCurrentDocument(PermissionType::GEOLOCATION,
+                                                  main_rfh()));
 }
 
 TEST_F(PermissionManagerTest, GetCanonicalOrigin) {

@@ -52,6 +52,18 @@ GURL GetEmbeddingOrigin(content::RenderFrameHost* const render_frame_host,
           render_frame_host->GetMainFrame()));
 }
 
+// A primary main frame with an opaque origin (e.g. a top-level document served
+// with `Content-Security-Policy: sandbox`) has no permission identity of its
+// own and no embedder to delegate from. Without this gate its requesting and
+// embedding origins would both come from the visible-URL fallback in
+// PermissionUtil::GetLastCommittedOriginAsURL(), i.e. from the origin that
+// merely hosts the sandboxed document.
+bool IsOpaqueOriginPrimaryMainFrame(
+    content::RenderFrameHost* const render_frame_host) {
+  return render_frame_host->IsInPrimaryMainFrame() &&
+         render_frame_host->GetLastCommittedOrigin().opaque();
+}
+
 PermissionSetting GetPermissionSettingForSubscription(
     ContentSettingsType content_settings_type,
     const content::PermissionResult& result) {
@@ -402,6 +414,13 @@ void PermissionManager::RequestPermissionsFromCurrentDocument(
     base::OnceCallback<void(const std::vector<content::PermissionResult>&)>
         permission_status_callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  if (render_frame_host && IsOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+    std::move(permission_status_callback)
+        .Run(std::vector<content::PermissionResult>(
+            request_description.permissions.size(),
+            content::PermissionResult(PermissionStatus::DENIED)));
+    return;
+  }
   RequestPermissionsInternal(render_frame_host, request_description,
                              std::move(permission_status_callback));
 }
@@ -442,6 +461,10 @@ PermissionManager::GetPermissionResultForCurrentDocument(
     content::RenderFrameHost* render_frame_host,
     bool should_include_device_status) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+  if (IsOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+    return content::PermissionResult(PermissionStatus::DENIED);
+  }
 
   const GURL requesting_origin =
       PermissionUtil::GetLastCommittedOriginAsURL(render_frame_host);
