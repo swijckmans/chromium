@@ -323,7 +323,8 @@ class PermissionManagerTest : public content::RenderViewHostTestHarness {
   content::RenderFrameHost* AddChildRFH(
       content::RenderFrameHost* parent,
       const GURL& origin,
-      PermissionsPolicyFeature feature = PermissionsPolicyFeature::kNotFound) {
+      PermissionsPolicyFeature feature = PermissionsPolicyFeature::kNotFound,
+      bool matches_opaque_src = false) {
     network::ParsedPermissionsPolicy frame_policy = {};
     if (feature != PermissionsPolicyFeature::kNotFound) {
       frame_policy.emplace_back(
@@ -332,7 +333,7 @@ class PermissionManagerTest : public content::RenderViewHostTestHarness {
               url::Origin::Create(origin))},
           /*self_if_matches=*/std::nullopt,
           /*matches_all_origins=*/false,
-          /*matches_opaque_src=*/false);
+          /*matches_opaque_src=*/matches_opaque_src);
     }
     content::RenderFrameHost* result =
         content::RenderFrameHostTester::For(parent)->AppendChildWithPolicy(
@@ -811,6 +812,46 @@ TEST_F(PermissionManagerTest,
       << "a sandboxed document must not observe the hosting origin's grant";
   permission_controller->UnsubscribeFromPermissionResultChange(
       subscription_id);
+}
+
+TEST_F(PermissionManagerTest,
+       SubframeOfOpaqueOriginMainFrameDoesNotBorrowUrlOrigin) {
+  const GURL kOrigin("https://example.com");
+  const GURL kUrl("https://example.com/untrusted.html");
+  const GURL kChildOrigin("https://google.com");
+  SetPermission(kOrigin, PermissionType::GEOLOCATION,
+                PermissionStatus::GRANTED);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  ASSERT_TRUE(main_rfh()->GetLastCommittedOrigin().opaque());
+
+  // Mirrors <iframe allow="geolocation" src="data:...">, whose default 'src'
+  // allowlist matches this opaque child.
+  content::RenderFrameHost* child = AddChildRFH(
+      main_rfh(), kChildOrigin, PermissionsPolicyFeature::kGeolocation,
+      /*matches_opaque_src=*/true);
+  ASSERT_TRUE(child->GetLastCommittedOrigin().opaque());
+
+  EXPECT_NE(PermissionStatus::GRANTED, GetPermissionStatusForCurrentDocument(
+                                           PermissionType::GEOLOCATION, child));
+
+  PermissionRequestManager::CreateForWebContents(web_contents());
+  auto prompt_factory = std::make_unique<MockPermissionPromptFactory>(
+      PermissionRequestManager::FromWebContents(web_contents()));
+  prompt_factory->set_response_type(PermissionRequestManager::DENY_ALL);
+  prompt_factory->DocumentOnLoadCompletedInPrimaryMainFrame();
+  Reset();
+  RequestPermissionFromCurrentDocument(PermissionType::GEOLOCATION, child);
+  EXPECT_TRUE(callback_called());
+  EXPECT_NE(PermissionStatus::GRANTED, callback_result());
+  EXPECT_FALSE(prompt_factory->RequestOriginSeen(kOrigin));
+  prompt_factory.reset();
 }
 
 TEST_F(PermissionManagerTest, GetCanonicalOrigin) {

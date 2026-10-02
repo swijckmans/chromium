@@ -52,16 +52,19 @@ GURL GetEmbeddingOrigin(content::RenderFrameHost* const render_frame_host,
           render_frame_host->GetMainFrame()));
 }
 
-// A primary main frame with an opaque origin (e.g. a top-level document served
-// with `Content-Security-Policy: sandbox`) has no permission identity of its
-// own and no embedder to delegate from. Without this gate its requesting and
-// embedding origins would both come from the visible-URL fallback in
-// PermissionUtil::GetLastCommittedOriginAsURL(), i.e. from the origin that
-// merely hosts the sandboxed document.
-bool IsOpaqueOriginPrimaryMainFrame(
+// A frame whose primary main frame has an opaque origin (e.g. a top-level
+// document served with `Content-Security-Policy: sandbox`, or a frame it
+// embeds) gets no permissions. The top-level document has no permission
+// identity of its own, and both its own lookups and the embedding origin of
+// its subframes would otherwise come from the visible-URL fallback in
+// PermissionUtil::GetLastCommittedOriginAsURL(), i.e. the origin that merely
+// hosts the sandboxed document.
+bool HasOpaqueOriginPrimaryMainFrame(
     content::RenderFrameHost* const render_frame_host) {
-  return render_frame_host->IsInPrimaryMainFrame() &&
-         render_frame_host->GetLastCommittedOrigin().opaque();
+  content::RenderFrameHost* const main_frame =
+      render_frame_host->GetMainFrame();
+  return main_frame->IsInPrimaryMainFrame() &&
+         main_frame->GetLastCommittedOrigin().opaque();
 }
 
 PermissionSetting GetPermissionSettingForSubscription(
@@ -414,7 +417,7 @@ void PermissionManager::RequestPermissionsFromCurrentDocument(
     base::OnceCallback<void(const std::vector<content::PermissionResult>&)>
         permission_status_callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  if (render_frame_host && IsOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+  if (render_frame_host && HasOpaqueOriginPrimaryMainFrame(render_frame_host)) {
     std::move(permission_status_callback)
         .Run(std::vector<content::PermissionResult>(
             request_description.permissions.size(),
@@ -462,7 +465,7 @@ PermissionManager::GetPermissionResultForCurrentDocument(
     bool should_include_device_status) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
-  if (IsOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+  if (HasOpaqueOriginPrimaryMainFrame(render_frame_host)) {
     return content::PermissionResult(PermissionStatus::DENIED);
   }
 
@@ -775,7 +778,7 @@ content::PermissionResult PermissionManager::GetPermissionStatusInternal(
   DCHECK(!render_process_host || !render_frame_host);
 
   if (render_frame_host &&
-      IsOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+      HasOpaqueOriginPrimaryMainFrame(render_frame_host)) {
     return content::PermissionResult(PermissionStatus::DENIED);
   }
 
