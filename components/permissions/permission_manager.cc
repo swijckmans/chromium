@@ -774,6 +774,11 @@ content::PermissionResult PermissionManager::GetPermissionStatusInternal(
     bool should_include_device_status) {
   DCHECK(!render_process_host || !render_frame_host);
 
+  if (render_frame_host &&
+      IsOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+    return content::PermissionResult(PermissionStatus::DENIED);
+  }
+
   // TODO(crbug.com/40218610): Move this to PermissionContextBase.
   content::RenderProcessHost* rph =
       render_frame_host ? render_frame_host->GetProcess() : render_process_host;

@@ -36,6 +36,7 @@
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/mock_render_process_host.h"
 #include "content/public/test/navigation_simulator.h"
+#include "content/public/test/permissions_test_utils.h"
 #include "content/public/test/test_browser_context.h"
 #include "content/public/test/test_renderer_host.h"
 #include "net/http/http_response_headers.h"
@@ -769,6 +770,47 @@ TEST_F(PermissionManagerTest, OpaqueOriginMainFrameDoesNotMintUrlOriginGrant) {
   EXPECT_EQ(PermissionStatus::ASK,
             GetPermissionStatusForCurrentDocument(PermissionType::GEOLOCATION,
                                                   main_rfh()));
+}
+
+TEST_F(PermissionManagerTest,
+       OpaqueOriginMainFrameSubscriptionDoesNotObserveUrlOriginGrant) {
+  const GURL kOrigin("https://example.com");
+  const GURL kUrl("https://example.com/untrusted.html");
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  content::RenderFrameHost* rfh = main_rfh();
+  ASSERT_TRUE(rfh->GetLastCommittedOrigin().opaque());
+
+  content::PermissionController* permission_controller =
+      browser_context()->GetPermissionController();
+  content::PermissionController::SubscriptionId subscription_id =
+      content::SubscribeToPermissionResultChange(
+          permission_controller,
+          content::PermissionDescriptorUtil::
+              CreatePermissionDescriptorForPermissionType(
+                  PermissionType::GEOLOCATION),
+          /*render_process_host=*/nullptr, rfh,
+          PermissionUtil::GetLastCommittedOriginAsURL(rfh),
+          /*should_include_device_status=*/false,
+          base::BindRepeating(&PermissionManagerTest::OnPermissionChange,
+                              base::Unretained(this)));
+
+  Reset();
+  SetPermission(kOrigin, PermissionType::GEOLOCATION,
+                PermissionStatus::GRANTED);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_FALSE(callback_called() &&
+               callback_result() == PermissionStatus::GRANTED)
+      << "a sandboxed document must not observe the hosting origin's grant";
+  permission_controller->UnsubscribeFromPermissionResultChange(
+      subscription_id);
 }
 
 TEST_F(PermissionManagerTest, GetCanonicalOrigin) {
