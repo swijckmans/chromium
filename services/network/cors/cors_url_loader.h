@@ -6,6 +6,7 @@
 #define SERVICES_NETWORK_CORS_CORS_URL_LOADER_H_
 
 #include <optional>
+#include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
@@ -259,6 +260,10 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) CorsURLLoader
 
   // https://fetch.spec.whatwg.org/#concept-request-tainted-origin
   bool tainted_ = false;
+
+  // URL list of the request, including redirects followed so far; carried
+  // across restarts.
+  std::vector<GURL> url_chain_;
 
   // https://fetch.spec.whatwg.org/#concept-request-redirect-count
   int redirect_count_ = 0;

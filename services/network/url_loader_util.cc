@@ -504,7 +504,6 @@ void ConfigureUrlRequest(const ResourceRequest& request,
   }
   url_request.set_site_for_cookies(effective_site_for_cookies);
   if (!request.navigation_redirect_chain.empty()) {
-    DCHECK_EQ(request.mode, mojom::RequestMode::kNavigate);
     url_request.SetURLChain(request.navigation_redirect_chain);
   }
   url_request.SetReferrer(request.referrer.GetAsReferrer().spec());
