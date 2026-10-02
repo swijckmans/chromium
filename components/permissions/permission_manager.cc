@@ -52,6 +52,21 @@ GURL GetEmbeddingOrigin(content::RenderFrameHost* const render_frame_host,
           render_frame_host->GetMainFrame()));
 }
 
+// A frame whose primary main frame has an opaque origin (e.g. a top-level
+// document served with `Content-Security-Policy: sandbox`, or a frame it
+// embeds) gets no permissions. The top-level document has no permission
+// identity of its own, and both its own lookups and the embedding origin of
+// its subframes would otherwise come from the visible-URL fallback in
+// PermissionUtil::GetLastCommittedOriginAsURL(), i.e. the origin that merely
+// hosts the sandboxed document.
+bool HasOpaqueOriginPrimaryMainFrame(
+    content::RenderFrameHost* const render_frame_host) {
+  content::RenderFrameHost* const main_frame =
+      render_frame_host->GetMainFrame();
+  return main_frame->IsInPrimaryMainFrame() &&
+         main_frame->GetLastCommittedOrigin().opaque();
+}
+
 PermissionSetting GetPermissionSettingForSubscription(
     ContentSettingsType content_settings_type,
     const content::PermissionResult& result) {
@@ -402,6 +417,13 @@ void PermissionManager::RequestPermissionsFromCurrentDocument(
     base::OnceCallback<void(const std::vector<content::PermissionResult>&)>
         permission_status_callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  if (render_frame_host && HasOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+    std::move(permission_status_callback)
+        .Run(std::vector<content::PermissionResult>(
+            request_description.permissions.size(),
+            content::PermissionResult(PermissionStatus::DENIED)));
+    return;
+  }
   RequestPermissionsInternal(render_frame_host, request_description,
                              std::move(permission_status_callback));
 }
@@ -442,6 +464,10 @@ PermissionManager::GetPermissionResultForCurrentDocument(
     content::RenderFrameHost* render_frame_host,
     bool should_include_device_status) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+
+  if (HasOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+    return content::PermissionResult(PermissionStatus::DENIED);
+  }
 
   const GURL requesting_origin =
       PermissionUtil::GetLastCommittedOriginAsURL(render_frame_host);
@@ -750,6 +776,11 @@ content::PermissionResult PermissionManager::GetPermissionStatusInternal(
     const GURL& embedding_origin,
     bool should_include_device_status) {
   DCHECK(!render_process_host || !render_frame_host);
+
+  if (render_frame_host &&
+      HasOpaqueOriginPrimaryMainFrame(render_frame_host)) {
+    return content::PermissionResult(PermissionStatus::DENIED);
+  }
 
   // TODO(crbug.com/40218610): Move this to PermissionContextBase.
   content::RenderProcessHost* rph =

@@ -130,6 +130,16 @@ PermissionResult VerifyContextOfCurrentDocument(
                             PermissionStatusSource::FENCED_FRAME);
   }
 
+  // A frame whose primary main frame has an opaque origin has no permission
+  // identity of its own to delegate from. Permission lookups for it or its
+  // subframes could otherwise use the visible-URL fallback in
+  // PermissionUtil::GetLastCommittedOriginAsURL().
+  RenderFrameHost* const main_frame = render_frame_host->GetMainFrame();
+  if (main_frame->IsInPrimaryMainFrame() &&
+      main_frame->GetLastCommittedOrigin().opaque()) {
+    return PermissionResult(PermissionStatus::DENIED);
+  }
+
 #if !BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(
           features::kPermissionsPolicyVerificationInContent)) {

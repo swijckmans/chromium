@@ -36,8 +36,10 @@
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/mock_render_process_host.h"
 #include "content/public/test/navigation_simulator.h"
+#include "content/public/test/permissions_test_utils.h"
 #include "content/public/test/test_browser_context.h"
 #include "content/public/test/test_renderer_host.h"
+#include "net/http/http_response_headers.h"
 #include "services/network/public/cpp/permissions_policy/origin_with_possible_wildcards.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy_declaration.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom.h"
@@ -321,7 +323,8 @@ class PermissionManagerTest : public content::RenderViewHostTestHarness {
   content::RenderFrameHost* AddChildRFH(
       content::RenderFrameHost* parent,
       const GURL& origin,
-      PermissionsPolicyFeature feature = PermissionsPolicyFeature::kNotFound) {
+      PermissionsPolicyFeature feature = PermissionsPolicyFeature::kNotFound,
+      bool matches_opaque_src = false) {
     network::ParsedPermissionsPolicy frame_policy = {};
     if (feature != PermissionsPolicyFeature::kNotFound) {
       frame_policy.emplace_back(
@@ -330,7 +333,7 @@ class PermissionManagerTest : public content::RenderViewHostTestHarness {
               url::Origin::Create(origin))},
           /*self_if_matches=*/std::nullopt,
           /*matches_all_origins=*/false,
-          /*matches_opaque_src=*/false);
+          /*matches_opaque_src=*/matches_opaque_src);
     }
     content::RenderFrameHost* result =
         content::RenderFrameHostTester::For(parent)->AppendChildWithPolicy(
@@ -690,6 +693,164 @@ TEST_F(PermissionManagerTest, GetPermissionStatusDelegation) {
   EXPECT_EQ(PermissionStatus::ASK, GetPermissionStatusForCurrentDocument(
                                        PermissionType::GEOLOCATION, child));
 
+  prompt_factory.reset();
+}
+
+// A top-level document with an opaque origin (here: served with
+// `Content-Security-Policy: sandbox allow-scripts`) must not be able to use
+// permission state persisted for the origin of the URL it was loaded from.
+TEST_F(PermissionManagerTest, OpaqueOriginMainFrameDoesNotBorrowUrlOrigin) {
+  const GURL kUrl("https://example.com/untrusted.html");
+  SetPermission(GURL("https://example.com"), PermissionType::GEOLOCATION,
+                PermissionStatus::GRANTED);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  content::RenderFrameHost* rfh = main_rfh();
+  ASSERT_TRUE(rfh->GetLastCommittedOrigin().opaque());
+  ASSERT_EQ(kUrl, rfh->GetLastCommittedURL());
+
+  EXPECT_NE(PermissionStatus::GRANTED, GetPermissionStatusForCurrentDocument(
+                                           PermissionType::GEOLOCATION, rfh));
+
+  // The request path must not hand out the persisted grant without a prompt.
+  PermissionRequestManager::CreateForWebContents(web_contents());
+  auto prompt_factory = std::make_unique<MockPermissionPromptFactory>(
+      PermissionRequestManager::FromWebContents(web_contents()));
+  prompt_factory->set_response_type(PermissionRequestManager::DENY_ALL);
+  prompt_factory->DocumentOnLoadCompletedInPrimaryMainFrame();
+  Reset();
+  RequestPermissionFromCurrentDocument(PermissionType::GEOLOCATION, rfh);
+  EXPECT_TRUE(callback_called());
+  EXPECT_NE(PermissionStatus::GRANTED, callback_result());
+  EXPECT_FALSE(prompt_factory->RequestOriginSeen(GURL("https://example.com")))
+      << "a sandboxed document must not prompt as the hosting origin";
+  prompt_factory.reset();
+}
+
+// Conversely, a request from such a document must not be prompted and
+// persisted as if it came from the hosting origin.
+TEST_F(PermissionManagerTest, OpaqueOriginMainFrameDoesNotMintUrlOriginGrant) {
+  const GURL kOrigin("https://example.com");
+  const GURL kUrl("https://example.com/untrusted.html");
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  content::RenderFrameHost* rfh = main_rfh();
+  ASSERT_TRUE(rfh->GetLastCommittedOrigin().opaque());
+
+  PermissionRequestManager::CreateForWebContents(web_contents());
+  auto prompt_factory = std::make_unique<MockPermissionPromptFactory>(
+      PermissionRequestManager::FromWebContents(web_contents()));
+  prompt_factory->set_response_type(PermissionRequestManager::ACCEPT_ALL);
+  if (base::FeatureList::IsEnabled(
+          content_settings::features::kApproximateGeolocationPermission)) {
+    prompt_factory->set_response_prompt_options(GeolocationPromptOptions{
+        .selected_accuracy = GeolocationAccuracy::kPrecise});
+  }
+  prompt_factory->DocumentOnLoadCompletedInPrimaryMainFrame();
+  Reset();
+  RequestPermissionFromCurrentDocument(PermissionType::GEOLOCATION, rfh);
+  EXPECT_TRUE(callback_called());
+  EXPECT_FALSE(prompt_factory->RequestOriginSeen(kOrigin));
+  prompt_factory.reset();
+
+  // Whatever happened above, a regular document on the hosting origin must
+  // still be in the ASK state.
+  NavigateAndCommit(kOrigin);
+  EXPECT_EQ(PermissionStatus::ASK,
+            GetPermissionStatusForCurrentDocument(PermissionType::GEOLOCATION,
+                                                  main_rfh()));
+}
+
+TEST_F(PermissionManagerTest,
+       OpaqueOriginMainFrameSubscriptionDoesNotObserveUrlOriginGrant) {
+  const GURL kOrigin("https://example.com");
+  const GURL kUrl("https://example.com/untrusted.html");
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  content::RenderFrameHost* rfh = main_rfh();
+  ASSERT_TRUE(rfh->GetLastCommittedOrigin().opaque());
+
+  content::PermissionController* permission_controller =
+      browser_context()->GetPermissionController();
+  content::PermissionController::SubscriptionId subscription_id =
+      content::SubscribeToPermissionResultChange(
+          permission_controller,
+          content::PermissionDescriptorUtil::
+              CreatePermissionDescriptorForPermissionType(
+                  PermissionType::GEOLOCATION),
+          /*render_process_host=*/nullptr, rfh,
+          PermissionUtil::GetLastCommittedOriginAsURL(rfh),
+          /*should_include_device_status=*/false,
+          base::BindRepeating(&PermissionManagerTest::OnPermissionChange,
+                              base::Unretained(this)));
+
+  Reset();
+  SetPermission(kOrigin, PermissionType::GEOLOCATION,
+                PermissionStatus::GRANTED);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_FALSE(callback_called() &&
+               callback_result() == PermissionStatus::GRANTED)
+      << "a sandboxed document must not observe the hosting origin's grant";
+  permission_controller->UnsubscribeFromPermissionResultChange(
+      subscription_id);
+}
+
+TEST_F(PermissionManagerTest,
+       SubframeOfOpaqueOriginMainFrameDoesNotBorrowUrlOrigin) {
+  const GURL kOrigin("https://example.com");
+  const GURL kUrl("https://example.com/untrusted.html");
+  const GURL kChildOrigin("https://google.com");
+  SetPermission(kOrigin, PermissionType::GEOLOCATION,
+                PermissionStatus::GRANTED);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      kUrl, web_contents());
+  auto headers =
+      base::MakeRefCounted<net::HttpResponseHeaders>("HTTP/1.1 200 OK");
+  headers->SetHeader("Content-Security-Policy", "sandbox allow-scripts");
+  navigation->SetResponseHeaders(headers);
+  navigation->Commit();
+  ASSERT_TRUE(main_rfh()->GetLastCommittedOrigin().opaque());
+
+  // Mirrors <iframe allow="geolocation" src="data:...">, whose default 'src'
+  // allowlist matches this opaque child.
+  content::RenderFrameHost* child = AddChildRFH(
+      main_rfh(), kChildOrigin, PermissionsPolicyFeature::kGeolocation,
+      /*matches_opaque_src=*/true);
+  ASSERT_TRUE(child->GetLastCommittedOrigin().opaque());
+
+  EXPECT_NE(PermissionStatus::GRANTED, GetPermissionStatusForCurrentDocument(
+                                           PermissionType::GEOLOCATION, child));
+
+  PermissionRequestManager::CreateForWebContents(web_contents());
+  auto prompt_factory = std::make_unique<MockPermissionPromptFactory>(
+      PermissionRequestManager::FromWebContents(web_contents()));
+  prompt_factory->set_response_type(PermissionRequestManager::DENY_ALL);
+  prompt_factory->DocumentOnLoadCompletedInPrimaryMainFrame();
+  Reset();
+  RequestPermissionFromCurrentDocument(PermissionType::GEOLOCATION, child);
+  EXPECT_TRUE(callback_called());
+  EXPECT_NE(PermissionStatus::GRANTED, callback_result());
+  EXPECT_FALSE(prompt_factory->RequestOriginSeen(kOrigin));
   prompt_factory.reset();
 }
 
