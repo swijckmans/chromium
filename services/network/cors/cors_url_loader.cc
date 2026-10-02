@@ -326,6 +326,9 @@ CorsURLLoader::CorsURLLoader(
       sync_network_loader_factory_(sync_network_loader_factory),
       request_(std::move(resource_request)),
       forwarding_client_(std::move(client)),
+      url_chain_(request_.navigation_redirect_chain.empty()
+                     ? std::vector<GURL>{request_.url}
+                     : request_.navigation_redirect_chain),
       traffic_annotation_(traffic_annotation),
       origin_access_list_(origin_access_list),
       skip_cors_enabled_scheme_check_(skip_cors_enabled_scheme_check),
@@ -523,6 +526,7 @@ void CorsURLLoader::FollowRedirect(
 
   const std::string original_method = std::move(request_.method);
   request_.UpdateOnRedirect(redirect_info_);
+  url_chain_.push_back(request_.url);
 
   // Update isolation_info_ and the shared dictionary storage location if they
   // changed as a result of the redirect for a browser-initiated request (e.g.
@@ -580,6 +584,7 @@ void CorsURLLoader::FollowRedirect(
       (!original_fetch_cors_flag && fetch_cors_flag_) ||
       (fetch_cors_flag_ && original_method != request_.method)) {
     DCHECK_NE(request_.mode, mojom::RequestMode::kNoCors);
+    request_.navigation_redirect_chain = url_chain_;
     network_client_receiver_.reset();
     sync_client_receiver_factory_.InvalidateWeakPtrs();
     StartRequest();

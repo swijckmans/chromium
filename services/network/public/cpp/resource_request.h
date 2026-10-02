@@ -210,8 +210,10 @@ struct COMPONENT_EXPORT(NETWORK_CPP_BASE) ResourceRequest {
   // once Chrome Platform Apps are gone.
   std::optional<url::Origin> isolated_world_origin;
 
-  // The chain of URLs seen during navigation redirects.  This should only
-  // contain values if the mode is `RedirectMode::kNavigate`.
+  // The chain of URLs seen during redirects. Renderer-provided chains should
+  // only be set if the mode is `RedirectMode::kNavigate`, but CorsURLLoader
+  // also sets this internally on requests it restarts after a redirect (and
+  // their preflights) so the network stack sees the full URL list.
   std::vector<GURL> navigation_redirect_chain;
 
   GURL referrer;

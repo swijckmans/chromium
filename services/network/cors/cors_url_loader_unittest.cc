@@ -1376,6 +1376,43 @@ TEST_F(CorsURLLoaderTest, CrossOriginToOriginalOriginRedirect) {
             mojom::CorsError::kMissingAllowOriginHeader);
 }
 
+TEST_F(CorsURLLoaderTest, RestartAfterRedirectCarriesUrlChain) {
+  const GURL origin("https://example.com");
+  const GURL url("https://other.example.com/foo");
+  const GURL new_url("https://example.com/bar");
+
+  ResourceRequest request;
+  request.mode = mojom::RequestMode::kCors;
+  request.credentials_mode = mojom::CredentialsMode::kOmit;
+  request.method = "POST";
+  request.url = url;
+  request.request_initiator = url::Origin::Create(origin);
+  CreateLoaderAndStart(request);
+  RunUntilCreateLoaderAndStartCalled();
+
+  ASSERT_EQ(1, num_created_loaders());
+  EXPECT_EQ("POST", GetRequest().method);
+
+  NotifyLoaderClientOnReceiveRedirect(
+      CreateRedirectInfo(303, "GET", new_url),
+      {{"Access-Control-Allow-Origin", "https://example.com"}});
+  RunUntilRedirectReceived();
+  ClearHasReceivedRedirect();
+  FollowRedirect();
+  RunUntilCreateLoaderAndStartCalled();
+
+  ASSERT_EQ(2, num_created_loaders());
+  EXPECT_EQ(new_url, GetRequest().url);
+  EXPECT_EQ("GET", GetRequest().method);
+  const std::vector<GURL> expected_url_chain{url, new_url};
+  EXPECT_EQ(expected_url_chain, GetRequest().navigation_redirect_chain);
+
+  NotifyLoaderClientOnReceiveResponse(
+      {{"Access-Control-Allow-Origin", "https://example.com"}});
+  NotifyLoaderClientOnComplete(net::OK);
+  RunUntilComplete();
+}
+
 TEST_F(CorsURLLoaderTest, CrossOriginToAnotherCrossOriginRedirect) {
   const GURL origin("https://example.com");
   const GURL url("https://other.example.com/foo.png");

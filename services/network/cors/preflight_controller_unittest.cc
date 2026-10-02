@@ -214,6 +214,20 @@ TEST(PreflightControllerCreatePreflightRequestTest, FetchWindowId) {
   EXPECT_EQ(request.fetch_window_id, preflight->fetch_window_id);
 }
 
+TEST(PreflightControllerCreatePreflightRequestTest, CopiesUrlChain) {
+  ResourceRequest request;
+  request.url = GURL("https://example.com/final");
+  request.navigation_redirect_chain = {
+      GURL("https://other.example.com/redirect"),
+      GURL("https://example.com/final")};
+
+  std::unique_ptr<ResourceRequest> preflight =
+      PreflightController::CreatePreflightRequestForTesting(request);
+
+  EXPECT_EQ(request.navigation_redirect_chain,
+            preflight->navigation_redirect_chain);
+}
+
 TEST(PreflightControllerCreatePreflightRequestTest, SubframeNavigation) {
   const auto kTopFrameOrigin = url::Origin::Create(GURL("https://a.com/"));
   const auto kFrameOrigin = url::Origin::Create(GURL("https://b.com/"));
