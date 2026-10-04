@@ -71,6 +71,16 @@ message ServiceWorkerRegistrationData {
     optional ReferrerPolicyValue referrer_policy = 1 [default = DEFAULT];
     optional int32 sandbox_flags = 2 [default = 0];
     optional IPAddressSpace ip_address_space = 3 [default = UNKNOWN];
+    message ConnectionAllowlist {
+      repeated string allowlist = 1;
+      optional string reporting_endpoint = 2;
+      optional bool allow_redirects = 3 [default = false];
+      optional bool allow_webrtc = 4 [default = false];
+      optional bool match_response_origin = 5 [default = false];
+    }
+    optional ConnectionAllowlist connection_allowlist_enforced = 4;
+    optional ConnectionAllowlist connection_allowlist_report_only = 5;
+    optional string connection_allowlists_response_url = 6;
     // TODO(crbug.com/40168691): add content security policies
   }
 

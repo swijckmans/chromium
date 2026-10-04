@@ -24,6 +24,7 @@
 #include "components/services/storage/filesystem_proxy_factory.h"
 #include "components/services/storage/public/mojom/service_worker_database.mojom-forward.h"
 #include "components/services/storage/service_worker/service_worker_database.pb.h"
+#include "services/network/public/cpp/connection_allowlist.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
 #include "services/network/public/mojom/ip_address_space.mojom-shared.h"
 #include "services/network/public/mojom/referrer_policy.mojom.h"
@@ -2576,6 +2577,55 @@ network::mojom::IPAddressSpace ConvertIPAddressSpaceFromProtocolBufferToMojom(
   }
 }
 
+namespace {
+
+using ProtoConnectionAllowlist =
+    ServiceWorkerRegistrationData::PolicyContainerPolicies::
+        ConnectionAllowlist;
+
+network::ConnectionAllowlist ConvertConnectionAllowlistFromProtocolBuffer(
+    const ProtoConnectionAllowlist& proto) {
+  network::ConnectionAllowlist connection_allowlist;
+  for (const auto& entry : proto.allowlist()) {
+    connection_allowlist.allowlist.push_back(entry);
+  }
+  if (proto.has_reporting_endpoint()) {
+    connection_allowlist.reporting_endpoint = proto.reporting_endpoint();
+  }
+  connection_allowlist.redirect_behavior =
+      proto.allow_redirects()
+          ? network::ConnectionAllowlist::RedirectBehavior::kAllow
+          : network::ConnectionAllowlist::RedirectBehavior::kBlock;
+  connection_allowlist.webrtc_behavior =
+      proto.allow_webrtc()
+          ? network::ConnectionAllowlist::WebRtcBehavior::kAllow
+          : network::ConnectionAllowlist::WebRtcBehavior::kBlock;
+  connection_allowlist.match_response_origin = proto.match_response_origin();
+  return connection_allowlist;
+}
+
+void ConvertConnectionAllowlistToProtocolBuffer(
+    const network::ConnectionAllowlist& connection_allowlist,
+    ProtoConnectionAllowlist* proto) {
+  for (const auto& entry : connection_allowlist.allowlist) {
+    proto->add_allowlist(entry);
+  }
+  if (connection_allowlist.reporting_endpoint) {
+    proto->set_reporting_endpoint(
+        connection_allowlist.reporting_endpoint.value());
+  }
+  proto->set_allow_redirects(
+      connection_allowlist.redirect_behavior ==
+      network::ConnectionAllowlist::RedirectBehavior::kAllow);
+  proto->set_allow_webrtc(
+      connection_allowlist.webrtc_behavior ==
+      network::ConnectionAllowlist::WebRtcBehavior::kAllow);
+  proto->set_match_response_origin(
+      connection_allowlist.match_response_origin);
+}
+
+}  // namespace
+
 ServiceWorkerDatabase::Status ServiceWorkerDatabase::ParseRegistrationData(
     const std::string& serialized,
     const blink::StorageKey& key,
@@ -2834,6 +2884,22 @@ ServiceWorkerDatabase::Status ServiceWorkerDatabase::ParseRegistrationData(
         (*out)->policy_container_policies->ip_address_space =
             ConvertIPAddressSpaceFromProtocolBufferToMojom(
                 policies.ip_address_space());
+      }
+      auto& connection_allowlists =
+          (*out)->policy_container_policies->connection_allowlists;
+      if (policies.has_connection_allowlist_enforced()) {
+        connection_allowlists.enforced =
+            ConvertConnectionAllowlistFromProtocolBuffer(
+                policies.connection_allowlist_enforced());
+      }
+      if (policies.has_connection_allowlist_report_only()) {
+        connection_allowlists.report_only =
+            ConvertConnectionAllowlistFromProtocolBuffer(
+                policies.connection_allowlist_report_only());
+      }
+      if (policies.has_connection_allowlists_response_url()) {
+        connection_allowlists.response_url =
+            GURL(policies.connection_allowlists_response_url());
       }
     }
     if (is_chrome_extension_scope) {
@@ -3122,6 +3188,22 @@ void ServiceWorkerDatabase::WriteRegistrationDataInBatch(
     policies->set_ip_address_space(
         ConvertIPAddressSpaceFromMojomToProtocolBuffer(
             registration.policy_container_policies->ip_address_space));
+    const network::ConnectionAllowlists& connection_allowlists =
+        registration.policy_container_policies->connection_allowlists;
+    if (connection_allowlists.enforced) {
+      ConvertConnectionAllowlistToProtocolBuffer(
+          connection_allowlists.enforced.value(),
+          policies->mutable_connection_allowlist_enforced());
+    }
+    if (connection_allowlists.report_only) {
+      ConvertConnectionAllowlistToProtocolBuffer(
+          connection_allowlists.report_only.value(),
+          policies->mutable_connection_allowlist_report_only());
+    }
+    if (connection_allowlists.response_url.is_valid()) {
+      policies->set_connection_allowlists_response_url(
+          connection_allowlists.response_url.spec());
+    }
   }
 
   if (registration.router_rules) {
