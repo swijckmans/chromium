@@ -20,6 +20,7 @@
 #include "base/unguessable_token.h"
 #include "components/services/storage/service_worker/service_worker_database.pb.h"
 #include "net/base/features.h"
+#include "services/network/public/cpp/connection_allowlist.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "services/network/public/mojom/referrer_policy.mojom-shared.h"
@@ -1066,6 +1067,86 @@ TEST(ServiceWorkerDatabaseTest, Registration_Basic) {
       std::ranges::contains(purgeable_ids_out, resources[0]->resource_id));
   EXPECT_TRUE(
       std::ranges::contains(purgeable_ids_out, resources[1]->resource_id));
+}
+
+TEST(ServiceWorkerDatabaseTest, ConnectionAllowlistsRoundTrip) {
+  std::unique_ptr<ServiceWorkerDatabase> database(CreateDatabaseInMemory());
+  const GURL origin("https://a.test");
+  const blink::StorageKey key =
+      blink::StorageKey::CreateFirstParty(url::Origin::Create(origin));
+  ServiceWorkerDatabase::DeletedVersion deleted_version;
+
+  RegistrationData data1;
+  data1.registration_id = 100;
+  data1.scope = URL(origin, "/scope1");
+  data1.key = key;
+  data1.script = URL(origin, "/sw.js");
+  data1.version_id = 1000;
+  data1.resources_total_size = base::ByteSize(1);
+  data1.policy_container_policies =
+      blink::mojom::PolicyContainerPolicies::New();
+
+  network::ConnectionAllowlist enforced;
+  enforced.allowlist = {"https://a.test/*", "https://b.test/path"};
+  enforced.reporting_endpoint = "ep";
+  enforced.redirect_behavior =
+      network::ConnectionAllowlist::RedirectBehavior::kAllow;
+  enforced.webrtc_behavior =
+      network::ConnectionAllowlist::WebRtcBehavior::kBlock;
+  data1.policy_container_policies->connection_allowlists.enforced = enforced;
+
+  network::ConnectionAllowlist report_only;
+  report_only.allowlist = {};
+  report_only.redirect_behavior =
+      network::ConnectionAllowlist::RedirectBehavior::kBlock;
+  report_only.webrtc_behavior =
+      network::ConnectionAllowlist::WebRtcBehavior::kAllow;
+  data1.policy_container_policies->connection_allowlists.report_only =
+      report_only;
+  data1.policy_container_policies->connection_allowlists.response_url =
+      GURL("https://a.test/sw.js");
+
+  std::vector<ResourceRecordPtr> resources1;
+  resources1.push_back(CreateResource(1, data1.script, 1));
+  ASSERT_EQ(ServiceWorkerDatabase::Status::kOk,
+            database->WriteRegistration(data1, resources1, &deleted_version));
+
+  RegistrationDataPtr data1_out;
+  std::vector<ResourceRecordPtr> resources1_out;
+  ASSERT_EQ(ServiceWorkerDatabase::Status::kOk,
+            database->ReadRegistration(data1.registration_id, key, &data1_out,
+                                       &resources1_out));
+  VerifyRegistrationData(data1, *data1_out);
+
+  RegistrationData data2;
+  data2.registration_id = 200;
+  data2.scope = URL(origin, "/scope2");
+  data2.key = key;
+  data2.script = URL(origin, "/sw.js");
+  data2.version_id = 2000;
+  data2.resources_total_size = base::ByteSize(1);
+  data2.policy_container_policies =
+      blink::mojom::PolicyContainerPolicies::New();
+  data2.policy_container_policies->connection_allowlists.enforced =
+      network::ConnectionAllowlist();
+
+  std::vector<ResourceRecordPtr> resources2;
+  resources2.push_back(CreateResource(2, data2.script, 1));
+  ASSERT_EQ(ServiceWorkerDatabase::Status::kOk,
+            database->WriteRegistration(data2, resources2, &deleted_version));
+
+  RegistrationDataPtr data2_out;
+  std::vector<ResourceRecordPtr> resources2_out;
+  ASSERT_EQ(ServiceWorkerDatabase::Status::kOk,
+            database->ReadRegistration(data2.registration_id, key, &data2_out,
+                                       &resources2_out));
+  VerifyRegistrationData(data2, *data2_out);
+  ASSERT_TRUE(data2_out->policy_container_policies->connection_allowlists
+                  .enforced.has_value());
+  EXPECT_TRUE(data2_out->policy_container_policies->connection_allowlists
+                  .enforced->allowlist.empty());
+  EXPECT_FALSE(data2_out->policy_container_policies->connection_allowlists
+                   .report_only.has_value());
 }
 
 TEST(ServiceWorkerDatabaseTest, DeleteNonExistentRegistration) {
