@@ -380,6 +380,7 @@ void BackgroundFetchJobController::InitializeUrlLoaderFactory(
   if (url_loader_factory_ || !registration || !registration->active_version()) {
     return;
   }
+  ServiceWorkerVersion* active_version = registration->active_version();
 
   scoped_refptr<ServiceWorkerContextWrapper> service_worker_context =
       data_manager_->service_worker_context();
@@ -394,12 +395,11 @@ void BackgroundFetchJobController::InitializeUrlLoaderFactory(
   }
 
   int process_id = ChildProcessHost::kInvalidUniqueID;
-  if (registration->active_version()->embedded_worker()->status() ==
+  if (active_version->embedded_worker()->status() ==
       blink::EmbeddedWorkerStatus::kRunning) {
     // TODO(crbug.com/379869738): Remove GetUnsafeValue once RendererProcessId
     // adopts strong types.
-    process_id = registration->active_version()
-                     ->embedded_worker()
+    process_id = active_version->embedded_worker()
                      ->process_id()
                      .GetUnsafeValue();
   }
@@ -414,8 +414,13 @@ void BackgroundFetchJobController::InitializeUrlLoaderFactory(
 
   network::mojom::URLLoaderFactoryParamsPtr factory_params =
       storage_partition->CreateURLLoaderFactoryParams();
+  // Background fetches can outlive the worker, so make sure the worker's
+  // restrictions are registered before any request goes out.
+  active_version->MaybeRegisterNetworkRestrictions(base::DoNothing());
+  factory_params->network_restrictions_id =
+      active_version->network_restrictions_id();
   factory_params->client_security_state =
-      registration->active_version()->BuildClientSecurityState().Clone();
+      active_version->BuildClientSecurityState().Clone();
 
   if (observer_remote) {
     factory_params->url_loader_network_observer = std::move(observer_remote);
