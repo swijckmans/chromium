@@ -59,6 +59,7 @@
 #include "content/browser/web_contents/web_contents_impl.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/connection_allowlist_util.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/device_service.h"
 #include "content/public/browser/disallow_activation_reason.h"
@@ -772,6 +773,8 @@ bool DownloadManagerImpl::InterceptDownload(
     if ((url.SchemeIsHTTPOrHTTPS() ||
          GetContentClient()->browser()->IsHandledURL(url)) &&
         web_contents) {
+      RenderFrameHost* render_frame_host = RenderFrameHost::FromID(
+          info.render_process_id, info.render_frame_id);
       url_chain.pop_back();
       NavigationController::LoadURLParams params(url);
       params.has_user_gesture = info.has_user_gesture;
@@ -791,12 +794,18 @@ bool DownloadManagerImpl::InterceptDownload(
       // Call ReceiveBadMessage to terminate such a renderer.
       // TODO(crbug.com/40201479): confirm if fenced frames are allowed to start
       // downloads.
-      if (!RenderFrameHost::FromID(info.render_process_id, info.render_frame_id)
-               ->IsActive()) {
+      if (!render_frame_host->IsActive()) {
         bad_message::ReceivedBadMessage(
             info.render_process_id,
             bad_message::RFH_INTERECEPT_DOWNLOAD_WHILE_INACTIVE);
         return false;
+      }
+
+      if (info.is_content_initiated &&
+          !FrameConnectionAllowlistAllowsRequestAndReportIfNeeded(
+              render_frame_host, info.url_chain.front(),
+              /*is_redirect=*/true)) {
+        return true;
       }
 
       web_contents->GetController().LoadURLWithParams(params);
