@@ -775,13 +775,6 @@ bool DownloadManagerImpl::InterceptDownload(
         web_contents) {
       RenderFrameHost* render_frame_host = RenderFrameHost::FromID(
           info.render_process_id, info.render_frame_id);
-      if (info.is_content_initiated &&
-          !FrameConnectionAllowlistAllowsRequestAndReportIfNeeded(
-              render_frame_host, info.url_chain.front(),
-              /*is_redirect=*/true)) {
-        return true;
-      }
-
       url_chain.pop_back();
       NavigationController::LoadURLParams params(url);
       params.has_user_gesture = info.has_user_gesture;
@@ -806,6 +799,13 @@ bool DownloadManagerImpl::InterceptDownload(
             info.render_process_id,
             bad_message::RFH_INTERECEPT_DOWNLOAD_WHILE_INACTIVE);
         return false;
+      }
+
+      if (info.is_content_initiated &&
+          !FrameConnectionAllowlistAllowsRequestAndReportIfNeeded(
+              render_frame_host, info.url_chain.front(),
+              /*is_redirect=*/true)) {
+        return true;
       }
 
       web_contents->GetController().LoadURLWithParams(params);
