@@ -48,6 +48,7 @@
 #include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/connection_allowlist_util.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/permission_controller.h"
 #include "content/public/browser/permission_descriptor_util.h"
@@ -434,6 +435,17 @@ void WebInstallServiceImpl::InstallFromManifestInternal(
   if (!IsUrlAllowedForWebInstall(install_target)) {
     std::move(callback_with_metrics)
         .Run(web_app::WebInstallServiceResult::kUnexpectedFailure,
+             blink::mojom::WebInstallServiceResult::kDataError);
+    return;
+  }
+
+  // The manifest is fetched with the profile's URL loader factory, which does
+  // not carry the frame's network restrictions, so check the frame's
+  // Connection-Allowlist here.
+  if (!content::FrameConnectionAllowlistAllowsRequestAndReportIfNeeded(
+          &render_frame_host(), install_target, /*is_redirect=*/false)) {
+    std::move(callback_with_metrics)
+        .Run(web_app::WebInstallServiceResult::kInstallCommandFailed,
              blink::mojom::WebInstallServiceResult::kDataError);
     return;
   }
