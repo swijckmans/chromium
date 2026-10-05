@@ -209,6 +209,7 @@
 #include "content/public/browser/active_url_message_filter.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/clipboard_types.h"
+#include "content/public/browser/connection_allowlist_util.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/cookie_access_details.h"
@@ -8042,6 +8043,12 @@ void RenderFrameHostImpl::DownloadURL(
   }
 
   if (!VerifyDownloadUrlParams(GetProcess(), *blink_parameters)) {
+    return;
+  }
+
+  if (blink_parameters->url.SchemeIsHTTPOrHTTPS() &&
+      !FrameConnectionAllowlistAllowsRequestAndReportIfNeeded(
+          this, blink_parameters->url, /*is_redirect=*/false)) {
     return;
   }
 
