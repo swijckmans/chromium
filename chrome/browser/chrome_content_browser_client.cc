@@ -61,7 +61,6 @@
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/back_forward_cache/back_forward_cache_util.h"
-#include "chrome/browser/bad_message.h"
 #include "chrome/browser/battery/battery_saver.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate_impl_client.h"
@@ -7242,13 +7241,10 @@ bool ChromeContentBrowserClient::HandleExternalProtocol(
   // origin as a secure fallback when the initiator is missing.
   if (std::optional<GURL> new_url =
           startup::ExtractGoogleChromeSchemeInnerUrl(url)) {
-    // Direct launch scheme navigations originating from Chrome's own renderers
-    // are blocked in Blink (see TODO(deepakr) in FrameLoader). Receiving an
-    // un-blocked direct launch scheme from a renderer document indicates a
-    // compromised renderer.
-    if (initiator_document) {
-      bad_message::ReceivedBadMessage(initiator_document->GetProcess(),
-                                      bad_message::CCBC_GOOGLE_CHROME_SCHEME);
+    // Direct-launch URLs are only honored for browser/OS-initiated
+    // navigations. Web-initiated navigations, including server redirects
+    // which Blink cannot see, are dropped.
+    if (initiating_origin.has_value() || initiator_document) {
       return false;
     }
 
@@ -7265,11 +7261,7 @@ bool ChromeContentBrowserClient::HandleExternalProtocol(
                               network::mojom::ReferrerPolicy::kDefault),
             WindowOpenDisposition::NEW_FOREGROUND_TAB, page_transition,
             /*is_renderer_initiated=*/true);
-        // Fallback to an opaque origin if the initiating origin is not
-        // provided (e.g., for external OS-initiated or browser-initiated
-        // launches) to prevent it from being treated as a privileged
-        // browser-initiated navigation.
-        params.initiator_origin = initiating_origin.value_or(url::Origin());
+        params.initiator_origin = url::Origin();
         web_contents->OpenURL(params, /*navigation_handle_callback=*/{});
         return true;
       }
