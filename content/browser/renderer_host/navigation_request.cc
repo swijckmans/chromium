@@ -6097,16 +6097,14 @@ void NavigationRequest::OnStartChecksComplete(
     loader_type = NavigationURLLoader::LoaderType::kNoopForInitialWebUI;
   }
 
-  // Sandbox flags inherited from the frame. In particular, this does not
-  // include:
-  // - Sandbox flags inherited from the creator via the PolicyContainer.
-  // - Sandbox flags forced for MHTML documents.
-  // - Sandbox flags from the future response via CSP.
-  // It is used by the ExternalProtocolHandler to ensure sandboxed iframe won't
-  // navigate the user toward a different application, which can be seen as a
-  // main frame navigation somehow.
+  // Sandbox flags from the frame policy and, while it is still alive, the
+  // initiator document's active sandbox flags (including CSP sandbox) are
+  // checked by ExternalProtocolHandler before launching a different app.
   network::mojom::WebSandboxFlags sandbox_flags =
       commit_params_->frame_policy.sandbox_flags;
+  if (RenderFrameHostImpl* initiator = GetInitiatorDocumentRenderFrameHost()) {
+    sandbox_flags |= initiator->active_sandbox_flags();
+  }
 
   // Reset the compositor lock before starting the loader.
   compositor_lock_.reset();
