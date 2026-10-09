@@ -2769,6 +2769,10 @@ TEST_F(ChromeContentBrowserClientHandleExternalProtocolTest,
     GTEST_SKIP() << "Direct launch scheme not defined.";
   }
 
+  MockWebContentsDelegate delegate;
+  web_contents()->SetDelegate(&delegate);
+  EXPECT_CALL(delegate, OpenURLFromTab).Times(0);
+
   GURL url(scheme + ":http://example.com");
   mojo::PendingRemote<network::mojom::URLLoaderFactory> out_factory;
 
@@ -2782,6 +2786,37 @@ TEST_F(ChromeContentBrowserClientHandleExternalProtocolTest,
       std::nullopt, main_rfh(), net::IsolationInfo(), &out_factory);
 
   EXPECT_FALSE(handled);
-  EXPECT_EQ(1, process()->bad_msg_count());
+  EXPECT_EQ(0, process()->bad_msg_count());
+}
+
+TEST_F(ChromeContentBrowserClientHandleExternalProtocolTest,
+       GoogleChromeSchemeFromRedirectWithoutInitiatorDocumentBlocked) {
+  ChromeContentBrowserClient client;
+  base::test::ScopedFeatureList feature_list{features::kGoogleChromeScheme};
+
+  std::string scheme = shell_integration::GetDirectLaunchUrlScheme();
+  if (scheme.empty()) {
+    GTEST_SKIP() << "Direct launch scheme not defined.";
+  }
+
+  MockWebContentsDelegate delegate;
+  web_contents()->SetDelegate(&delegate);
+  EXPECT_CALL(delegate, OpenURLFromTab).Times(0);
+
+  GURL url(scheme + ":http://example.com");
+  mojo::PendingRemote<network::mojom::URLLoaderFactory> out_factory;
+
+  bool handled = client.HandleExternalProtocol(
+      url,
+      base::BindRepeating(
+          &ChromeContentBrowserClientHandleExternalProtocolTest::web_contents,
+          base::Unretained(this)),
+      content::FrameTreeNodeId(), nullptr, false, false,
+      network::mojom::WebSandboxFlags::kNone, ui::PAGE_TRANSITION_LINK, false,
+      url::Origin::Create(GURL("https://attacker.example")),
+      /*initiator_document=*/nullptr, net::IsolationInfo(), &out_factory);
+
+  EXPECT_FALSE(handled);
+  EXPECT_EQ(0, process()->bad_msg_count());
 }
 #endif
