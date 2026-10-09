@@ -61,7 +61,6 @@
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/back_forward_cache/back_forward_cache_util.h"
-#include "chrome/browser/bad_message.h"
 #include "chrome/browser/battery/battery_saver.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate_impl_client.h"
