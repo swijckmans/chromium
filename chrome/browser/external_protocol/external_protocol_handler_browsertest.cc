@@ -59,11 +59,16 @@ class ExternalProtocolHandlerSandboxBrowserTest
 
   content::RenderFrameHost* CreateIFrame(content::RenderFrameHost* document,
                                          std::string iframe_sandbox) {
+    return CreateIFrame(document, iframe_sandbox, "/empty.html");
+  }
+
+  content::RenderFrameHost* CreateIFrame(content::RenderFrameHost* document,
+                                         std::string iframe_sandbox,
+                                         std::string iframe_src) {
     EXPECT_TRUE(content::ExecJs(
         document, "const iframe = document.createElement('iframe');" +
-                      iframe_sandbox +
-                      "iframe.src = '/empty.html';"
-                      "document.body.appendChild(iframe)"));
+                      iframe_sandbox + "iframe.src = '" + iframe_src +
+                      "';document.body.appendChild(iframe)"));
 
     EXPECT_TRUE(content::WaitForLoadStop(web_content()));
     return ChildFrameAt(document, 0);
@@ -217,6 +222,26 @@ IN_PROC_BROWSER_TEST_F(ExternalProtocolHandlerSandboxBrowserTest, SandboxAll) {
   EXPECT_FALSE(
       AllowedBySandbox(CreateIFrame(web_content()->GetPrimaryMainFrame(),
                                     "iframe.sandbox = 'allow-scripts';")));
+}
+
+IN_PROC_BROWSER_TEST_F(ExternalProtocolHandlerSandboxBrowserTest,
+                       SandboxViaCSP) {
+  EXPECT_FALSE(AllowedBySandbox(CreateIFrame(
+      web_content()->GetPrimaryMainFrame(), "",
+      embedded_test_server()
+          ->GetURL(
+              "/set-header?Content-Security-Policy:%20sandbox%20allow-scripts")
+          .spec())));
+}
+
+IN_PROC_BROWSER_TEST_F(ExternalProtocolHandlerSandboxBrowserTest,
+                       SandboxViaCSPAllowPopups) {
+  EXPECT_TRUE(AllowedBySandbox(CreateIFrame(
+      web_content()->GetPrimaryMainFrame(), "",
+      embedded_test_server()
+          ->GetURL("/set-header?Content-Security-Policy:%20sandbox%20"
+                   "allow-scripts%20allow-popups")
+          .spec())));
 }
 
 IN_PROC_BROWSER_TEST_F(ExternalProtocolHandlerSandboxBrowserTest,
